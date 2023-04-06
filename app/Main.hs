@@ -2,6 +2,8 @@ module Main (main) where
 
 import Graph
 import Types
+import Plot 
+
 import qualified Data.IntMap as M
 import qualified Data.List as L
 import qualified Data.Set as S
@@ -12,7 +14,7 @@ import System.Random
 
 
 main :: IO ()
-main = mainEasy --mainLarge
+main = plotEasy --mainLarge
 
 
 mainLarge = do 
@@ -58,46 +60,32 @@ mainEasy = do
          configs = [(wi,prob,perc,i) | wi <- wmax, prob <- probs, perc <- percentages, i <- [1..ninstances]]
          logfile = "logeasy.txt"
 
+plotEasy = do
+  b <- doesFileExist logfile
+  when (not b) $ writeHeader logfile
+  forM_ densities $ \di -> do 
+      res <- forM percentages $ \pi -> do --forM_ configs $ \(wi, prob, perc,i) -> do 
+        r <- forM [1..10] $ \i -> do
+                r <- test 20 0.5 10 pi 0.5
+                appendFile logfile $ show r ++ "\n"
+                print r
+                pure r
+        pure (pi,r)
+      plotAccuracyIO ("Figures/accuracy_" ++ show di ++ ".png") res
+    
+   where wmax = [10,20,30]
+         densities = [0.25,0.5,0.75]
+         --percentages = [0.01,0.05,0.001,0.005]++[0.1,0.2..1]
+         percentages = [1e-4,2e-4..1e-2]
+         ninstances = 10
+         -- configs = [(wi,prob,perc,i) | wi <- wmax, prob <- probs, perc <- percentages, i <- [1..ninstances]]
+         configs = []
+         logfile = "ploteasy.txt"
 
-data Result = Result  {
-                        _graphSiz :: Int,
-                        _wmax :: Int,
-                        _graphProb :: Double,
-                        _percentageTaken :: Double,
-                        _optVal :: Int,
-                        _lexVal :: Int,
-                        _randVal :: Int
-                      }
-
-truncateNdigits k n = (fromIntegral $ round $ n*10^k) / 10^k
 
 
 mkISOrder :: Graph -> [[Int]] -> TotalPreorder (Coalition Int)
 mkISOrder gr coals = mkCoalitionOrder (_fromWeight . score gr) (isSolver . subGraph gr <$> coals)
-
-order gr = mkISOrder gr $ allSubsets [1..n] 
-    where n = M.size gr
-randomOrder gr len = do
-        selected <- take len <$> shuffleM candidates
-        pure $ mkISOrder gr selected
-    where n = M.size gr
-          candidates = allSubsets [1..n]
-fasterRandomOrder :: Graph -> Int -> Double -> S.Set [Int] -> IO (S.Set [Int])
-fasterRandomOrder _ 0 _ s = pure s
-fasterRandomOrder gr len keepprob set = do
-    keep <- forM [1..len] $ \_ -> randomRIO (0,1)
-    let entry = [i | (i,keepi) <- zip [1..] keep, keepi <= keepprob]
-    if entry `S.member` set then fasterRandomOrder gr len keepprob set 
-                            else fasterRandomOrder gr (len-1) keepprob (S.insert entry set) 
-
-        
-glouton :: Graph -> [Int] -> [Int]
-glouton gr [] = []
-glouton gr (c:candidates) = c:glouton gr (candidates L.\\ neighbors gr c)
-
-randomSol :: Graph -> IO [Int]
-randomSol gr = glouton gr <$> shuffleM (M.keys gr)
-
 test :: Int  -- max weight to be sampled
      -> Double  -- density (% of two vertices to be connected)
      -> Int     -- number of vertices
@@ -140,9 +128,29 @@ test wmax prob siz percentage acceptp = do
 
 
 
+order gr = mkISOrder gr $ allSubsets [1..n] 
+    where n = M.size gr
+randomOrder gr len = do
+        selected <- take len <$> shuffleM candidates
+        pure $ mkISOrder gr selected
+    where n = M.size gr
+          candidates = allSubsets [1..n]
+fasterRandomOrder :: Graph -> Int -> Double -> S.Set [Int] -> IO (S.Set [Int])
+fasterRandomOrder _ 0 _ s = pure s
+fasterRandomOrder gr len keepprob set = do
+    keep <- forM [1..len] $ \_ -> randomRIO (0,1)
+    let entry = [i | (i,keepi) <- zip [1..] keep, keepi <= keepprob]
+    if entry `S.member` set then fasterRandomOrder gr len keepprob set 
+                            else fasterRandomOrder gr (len-1) keepprob (S.insert entry set) 
 
-writeHeader :: String -> IO ()
-writeHeader str = writeFile str "size;wmax;prob;perc;opt;lex;rnd\n"
-instance Show Result where
-    show (Result gsiz' wmax' gprob totake opt' lex' rnd') = L.intercalate ";" $ fmap show [gsiz,wmax, truncateNdigits 2 gprob, totake, opt, lex, rnd]
-                where [gsiz,wmax, opt,lex,rnd] = fmap fromIntegral [gsiz',wmax', opt', lex', rnd']
+        
+glouton :: Graph -> [Int] -> [Int]
+glouton gr [] = []
+glouton gr (c:candidates) = c:glouton gr (candidates L.\\ neighbors gr c)
+
+randomSol :: Graph -> IO [Int]
+randomSol gr = glouton gr <$> shuffleM (M.keys gr)
+
+
+
+
