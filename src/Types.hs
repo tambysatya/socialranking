@@ -52,11 +52,13 @@ testPreorder = mkCoalitionOrder score coals
     where score = sum
           coals = [[1,2,3],[2,5], [2,3], [1,2], [1], [5]]
 
-allSubsets :: [a] -> [[a]]
+allSubsets :: (Eq a) => [a] -> [[a]]
+allSubsets l = L.delete l $ allSubsets' l 
 --allSubsets [] = []
-allSubsets [] = error "allSubsets called on an empty list and cannot contain the empty coalition"
-allSubsets [x] = [[x]] 
-allSubsets (x:xs) = [[x]] ++ allSubsets xs ++ fmap (x:) (allSubsets xs)
+allSubsets' :: [a] -> [[a]]
+allSubsets' [] = error "allSubsets called on an empty list and cannot contain the empty coalition"
+allSubsets' [x] = [[x]] 
+allSubsets' (x:xs) = [[x]] ++ allSubsets' xs ++ fmap (x:) (allSubsets' xs)
 
 lexCell :: (Ord a) => [a] -> TotalPreorder (Coalition a) -> [([Int],a)]
 lexCell eltorank (TotalPreorder l) = ret

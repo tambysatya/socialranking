@@ -25,6 +25,7 @@ dependencies:
 - lens
 - random
 - random-shuffle
+- directory
 
 ghc-options:
 - -Wall

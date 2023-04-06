@@ -58,7 +58,7 @@ mkRandomGraph maxweight prob siz = foldM f M.empty [1..siz]
                         pr <- randomRIO (0,1)
                         -- debug
                         --print (ni,pr)
-                        when (pr <= prob) $ putStrLn $ "adding: " ++ show (el,ni)
+                        --- when (pr <= prob) $ putStrLn $ "adding: " ++ show (el,ni)
 
                         pure $ pr <= prob
                 samples <- mapM sampleEdge [el-1,el-2 .. 1]
@@ -84,27 +84,4 @@ isSolver gr
                           in if score gr without >= score gr with then without else with
         where candidates = M.keys gr
 
--- Tests
 
-order gr = mkCoalitionOrder (_fromWeight . score gr) (isSolver . subGraph gr <$> allSubsets [1..n])
-    where n = M.size gr
-
-glouton :: Graph -> [Int] -> [Int]
-glouton gr [] = []
-glouton gr (c:candidates) = c:glouton gr (candidates L.\\ neighbors gr c)
-
-randomSol :: Graph -> IO [Int]
-randomSol gr = glouton gr <$> shuffleM (M.keys gr)
-
-test :: Double -> Int -> IO ()
-test prob siz = do
-    gr <- mkRandomGraph 10 prob siz
-    let opt = isSolver gr
-        ordret = reverse $ lexCell [1..siz] $ order gr
-        ord = fmap snd ordret
-        glout = glouton gr ord
-    print (score gr opt, score gr glout)
-    putStrLn $ "opt=" ++ show opt ++ " lexcell=" ++ show glout ++  " order=" ++ show ord
-    putStrLn $ "total order=" ++ unlines (fmap show  ordret)
-    rand <- randomSol gr
-    putStrLn $ "random=" ++ show rand ++ " val= " ++ show (score gr rand)
