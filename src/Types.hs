@@ -52,19 +52,21 @@ testPreorder = mkCoalitionOrder score coals
     where score = sum
           coals = [[1,2,3],[2,5], [2,3], [1,2], [1], [5]]
 
-allSubsets :: (Eq a) => [a] -> [[a]]
-allSubsets l = L.delete l $ allSubsets' l 
+allSubsets :: (Ord a, Eq a) => [a] -> [[a]]
+allSubsets l = fmap S.toList $ L.delete (S.fromList l) $ allSubsets' l 
 --allSubsets [] = []
-allSubsets' :: [a] -> [[a]]
+allSubsets' :: (Ord a) => [a] -> [S.Set a]
 allSubsets' [] = error "allSubsets called on an empty list and cannot contain the empty coalition"
-allSubsets' [x] = [[x]] 
-allSubsets' (x:xs) = [[x]] ++ allSubsets' xs ++ fmap (x:) (allSubsets' xs)
+allSubsets' [x] = [S.fromList [x]] 
+allSubsets' (x:xs) = [S.fromList [x]] ++ allSubsets' xs ++ fmap (S.insert x) (allSubsets' xs)
 
 lexCell :: (Ord a) => [a] -> TotalPreorder (Coalition a) -> [([Int],a)]
 lexCell eltorank (TotalPreorder l) = ret
     where eqclasses = L.sortBy (\x y -> y `compare` x) $ M.keys l 
           nclasses = M.size l
-          lexRank a = [length [ci | ci <- coals, a `isIn` ci]| (i, ri) <- zip [1..] eqclasses , let coals = fromJust $ M.lookup ri l]
+          lexRank a = [length [ci | ci <- coals, a `isIn` ci]
+                           | (i, ri) <- zip [1..] eqclasses ,
+                           let coals = fromJust $ M.lookup ri l]
           ret = L.sortBy (compare `on` fst) [(lexRank a, a) | a <- eltorank]
 
 printCell :: (Show a) => [([Int],a)] -> IO ()
