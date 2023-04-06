@@ -4,18 +4,50 @@ import Graph
 import Types
 import qualified Data.IntMap as M
 import qualified Data.List as L
+import qualified Data.Set as S
 import System.Random.Shuffle
 import Control.Monad
 import System.Directory
+import System.Random
 
-logfile = "log.txt"
 
 main :: IO ()
-main = do
+main = mainEasy --mainLarge
+
+
+mainLarge = do 
+  b <- doesFileExist logfile
+  when (not b) $ writeHeader logfile
+  forM_ configs $ \(wi,density,(siz,totake,accept),i) -> do 
+    r <- test wi density siz totake accept
+    appendFile logfile $ show r ++ "\n"
+    print r
+
+  {-
+  forM_ configs $ \(wi, prob, (size,perc),i) -> do 
+    r <- test wi prob size perc
+    appendFile logfile $ show r ++ "\n"
+    print r
+    -}
+   where 
+         wmax = [10,20,30]
+         probs = [0.25,0.5,0.75]
+         -- percentages = [(20,0.0001), (30,1e-7), (40,1e-10)]
+         instances = [(20,0.0001,0.8), -- (size, percentages taken, acceptpercentage) -- The accept percentage influence the difficulty of the problems to be solved
+                      (30,1e-7,0.5),
+                      (40,1e-10,0.1)]
+
+         ninstances = 10
+         configs = [(wi,density,ins,i) | wi <- wmax, density <- probs, ins <- instances, i <- [1..ninstances]]
+         -- configs = [(wi,prob,perc,i) | wi <- wmax, prob <- probs, perc <- percentages, i <- [1..ninstances]]
+         logfile = "loghard.txt"
+
+
+mainEasy = do
   b <- doesFileExist logfile
   when (not b) $ writeHeader logfile
   forM_ configs $ \(wi, prob, perc,i) -> do 
-    r <- test wi prob 10 perc
+    r <- test wi prob 10 perc 0.5
     appendFile logfile $ show r ++ "\n"
     print r
     
@@ -24,6 +56,7 @@ main = do
          percentages = [0.01,0.05,0.001,0.005]++[0.1,0.2..1]
          ninstances = 10
          configs = [(wi,prob,perc,i) | wi <- wmax, prob <- probs, perc <- percentages, i <- [1..ninstances]]
+         logfile = "logeasy.txt"
 
 
 data Result = Result  {
@@ -49,6 +82,15 @@ randomOrder gr len = do
         pure $ mkISOrder gr selected
     where n = M.size gr
           candidates = allSubsets [1..n]
+fasterRandomOrder :: Graph -> Int -> Double -> S.Set [Int] -> IO (S.Set [Int])
+fasterRandomOrder _ 0 _ s = pure s
+fasterRandomOrder gr len keepprob set = do
+    keep <- forM [1..len] $ \_ -> randomRIO (0,1)
+    let entry = [i | (i,keepi) <- zip [1..] keep, keepi <= keepprob]
+    if entry `S.member` set then fasterRandomOrder gr len keepprob set 
+                            else fasterRandomOrder gr (len-1) keepprob (S.insert entry set) 
+
+        
 glouton :: Graph -> [Int] -> [Int]
 glouton gr [] = []
 glouton gr (c:candidates) = c:glouton gr (candidates L.\\ neighbors gr c)
@@ -56,13 +98,23 @@ glouton gr (c:candidates) = c:glouton gr (candidates L.\\ neighbors gr c)
 randomSol :: Graph -> IO [Int]
 randomSol gr = glouton gr <$> shuffleM (M.keys gr)
 
-test :: Int -> Double -> Int -> Double -> IO Result
-test wmax prob siz percentage = do
+test :: Int  -- max weight to be sampled
+     -> Double  -- density (% of two vertices to be connected)
+     -> Int     -- number of vertices
+     -> Double  -- proportion of coalitions that are evaluated
+     -> Double -- Proportion of acceptation of each vertex
+     -> IO Result
+test wmax prob siz percentage acceptp = do
     gr <- mkRandomGraph (Weight wmax) prob siz
     rnd <- randomSol gr
     
     datas <- if percentage == 1 then pure $ order gr
-                                else randomOrder gr totake
+                                else do 
+                                    putStrLn $ "taking " ++ show totake
+                                    -- subset <- fasterRandomOrder gr totake acceptp S.empty -- TODO
+                                    randomOrder gr totake
+                                    --putStrLn "found order"
+                                    --pure $ mkISOrder gr $ S.toList subset 
 
     let opt = isSolver gr
         ordret = reverse $ lexCell [1..siz] datas
@@ -92,5 +144,5 @@ test wmax prob siz percentage = do
 writeHeader :: String -> IO ()
 writeHeader str = writeFile str "size;wmax;prob;perc;opt;lex;rnd\n"
 instance Show Result where
-    show (Result gsiz' wmax' gprob totake opt' lex' rnd') = L.intercalate ";" $ fmap show [gsiz,wmax, truncateNdigits 2 gprob, truncateNdigits 3 totake, opt, lex, rnd]
+    show (Result gsiz' wmax' gprob totake opt' lex' rnd') = L.intercalate ";" $ fmap show [gsiz,wmax, truncateNdigits 2 gprob, totake, opt, lex, rnd]
                 where [gsiz,wmax, opt,lex,rnd] = fmap fromIntegral [gsiz',wmax', opt', lex', rnd']
