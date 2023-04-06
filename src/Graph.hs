@@ -100,7 +100,7 @@ test :: Double -> Int -> IO ()
 test prob siz = do
     gr <- mkRandomGraph 10 prob siz
     let opt = isSolver gr
-        ordret = lexCell [1..siz] $ order gr
+        ordret = reverse $ lexCell [1..siz] $ order gr
         ord = fmap snd ordret
         glout = glouton gr ord
     print (score gr opt, score gr glout)

@@ -60,7 +60,7 @@ allSubsets (x:xs) = [[x]] ++ allSubsets xs ++ fmap (x:) (allSubsets xs)
 
 lexCell :: (Ord a) => [a] -> TotalPreorder (Coalition a) -> [([Int],a)]
 lexCell eltorank (TotalPreorder l) = ret
-    where eqclasses = L.sort $ M.keys l 
+    where eqclasses = L.sortBy (\x y -> y `compare` x) $ M.keys l 
           nclasses = M.size l
           lexRank a = [length [ci | ci <- coals, a `isIn` ci]| (i, ri) <- zip [1..] eqclasses , let coals = fromJust $ M.lookup ri l]
           ret = L.sortBy (compare `on` fst) [(lexRank a, a) | a <- eltorank]
