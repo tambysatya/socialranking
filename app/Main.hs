@@ -3,6 +3,7 @@ module Main (main) where
 import Graph
 import Types
 import Plot 
+import IS.MIP
 
 import qualified Data.IntMap as M
 import qualified Data.List as L
@@ -14,7 +15,8 @@ import System.Random
 
 
 main :: IO ()
-main = plotEasy --mainLarge
+main = void testMIP
+--main = plotEasy --mainLarge
 
 
 mainLarge = do 

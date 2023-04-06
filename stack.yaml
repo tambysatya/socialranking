@@ -36,6 +36,7 @@ packages:
 # forks / in-progress versions pinned to a git hash. For example:
 #
 extra-deps:
+- ../haskell-ipsolver
 - gnuplot-0.5.7@sha256:525b5821dd09a03e69e451b90d4dba5b297706f67db4a2edb217fd54c06919e9,5119
 - data-accessor-0.2.3@sha256:77888d900caf07f7d42cf9f9299fd2207512dd04d17609646eedd3992c367b61,4860
 - data-accessor-transformers-0.2.1.7@sha256:e78f2d6ae182d5baefaf1e2683d2a60245215d0b2cb31a47917bd310cfd089bb,1198

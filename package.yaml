@@ -21,12 +21,14 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- haskell-ipsolver
 - containers
 - lens
 - random
 - random-shuffle
 - directory
 - gnuplot
+- array
 
 ghc-options:
 - -Wall
