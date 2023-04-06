@@ -63,24 +63,29 @@ mainEasy = do
 plotEasy = do
   b <- doesFileExist logfile
   when (not b) $ writeHeader logfile
-  forM_ densities $ \di -> do 
+  results <- forM densities $ \di -> do 
       res <- forM percentages $ \pi -> do --forM_ configs $ \(wi, prob, perc,i) -> do 
         r <- forM [1..10] $ \i -> do
-                r <- test 20 0.5 10 pi 0.5
+                r <- test 20 di 15 pi 0.5
                 appendFile logfile $ show r ++ "\n"
                 print r
                 pure r
-        pure (pi,r)
-      plotAccuracyIO ("Figures/accuracy_" ++ show di ++ ".png") res
+        pure (totake pi,r)
+      plotAccuracyIO  ("Figures/accuracy_" ++ show di ++ ".png") [(show di ++ " % edges",res)]
+      pure (show di ++ " % edges", res)
+  pure ()
+  plotAccuracyIO  ("Figures/accuracy.png") results
     
    where wmax = [10,20,30]
          densities = [0.25,0.5,0.75]
          --percentages = [0.01,0.05,0.001,0.005]++[0.1,0.2..1]
-         percentages = [1e-4,2e-4..1e-2]
+         percentages = [1e-5,5e-5..1e-3]
          ninstances = 10
          -- configs = [(wi,prob,perc,i) | wi <- wmax, prob <- probs, perc <- percentages, i <- [1..ninstances]]
          configs = []
          logfile = "ploteasy.txt"
+         size = 15
+         totake pi = fromIntegral (truncate $ pi * (2^size-1))
 
 
 
