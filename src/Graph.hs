@@ -5,10 +5,15 @@ import qualified Data.IntMap as M
 import Control.Lens
 import Data.Maybe
 import System.Random
+import System.Random.Shuffle
 import Control.Monad
 import Data.Foldable
+import qualified Data.List as L
 
-newtype Weight = Weight Int
+
+import Types
+
+newtype Weight = Weight {_fromWeight :: Int}
     deriving (Num,Eq,Ord)
 type Graph = M.IntMap (Weight,M.IntMap ())
 
@@ -31,12 +36,18 @@ createNode (Weight maxw) gr i = do
     pure $ gr & at i .~ Just (Weight v,M.empty)
 
 
+{-| Remove a nodes from the graph and from the neighborhood lists -}
 deleteNode :: Graph -> Int -> Graph
 deleteNode gr i = gr' & at i .~ Nothing 
     where deleteNeighbor :: Graph -> Int -> Graph
           deleteNeighbor gr j = gr & at j ._Just. _2 %~ M.delete i
           gr' :: Graph
           gr' = foldl' deleteNeighbor gr (neighbors gr i) -- the neighbors forget i
+
+{-| Computes the subgraph restricted to a subset of nodes -}
+subGraph :: Graph -> [Int] -> Graph
+subGraph g ls = foldl' deleteNode g $ vertices L.\\ ls
+    where vertices = M.keys g
 
 mkRandomGraph :: Weight -> Double -> Int -> IO Graph
 mkRandomGraph maxweight prob siz = foldM f M.empty [1..siz]
@@ -56,15 +67,44 @@ mkRandomGraph maxweight prob siz = foldM f M.empty [1..siz]
 
 instance Show Weight where show (Weight v) = "W:" ++ show v
 
+{- Remove a nodes and all of its neighbors -}
+isUpdate :: Graph -> Int -> Graph
+isUpdate gr i = deleteNode (foldl' deleteNode gr (neighbors gr i)) i
 
 {-independent set trivial solver -}
-{-
-isSolver :: Graph -> [Int] -> (Weight,[Int])
-isSolver gr [] = (0,[])
-isSolver gr (c:cs) = maxFst (isSolver gr cs) (isSolver deleteEdgeC cs )-- [ci | ci <- cand]
-    where score :: [Int] -> Weight
-          score sol = sum [fst $ fromJust (gr ^. at vi) | vi <- sol]
-          maxFst (x,v) (x',v')
-                        | v >= v' = (x,v)
-                        | else = (x',v')
-  -}        
+
+score :: Graph -> [Int] -> Weight
+score gr sol = sum [fst $ fromJust (gr ^. at vi) | vi <- sol]
+isSolver :: Graph -> [Int]
+isSolver gr 
+            | null candidates = []
+            | otherwise = let (c:cs) = candidates 
+                              without = isSolver (deleteNode gr c) -- only the node is deleted
+                              with = c: isSolver (isUpdate gr c)
+                          in if score gr without >= score gr with then without else with
+        where candidates = M.keys gr
+
+-- Tests
+
+order gr = mkCoalitionOrder (_fromWeight . score gr) (isSolver . subGraph gr <$> allSubsets [1..n])
+    where n = M.size gr
+
+glouton :: Graph -> [Int] -> [Int]
+glouton gr [] = []
+glouton gr (c:candidates) = c:glouton gr (candidates L.\\ neighbors gr c)
+
+randomSol :: Graph -> IO [Int]
+randomSol gr = glouton gr <$> shuffleM (M.keys gr)
+
+test :: Double -> Int -> IO ()
+test prob siz = do
+    gr <- mkRandomGraph 10 prob siz
+    let opt = isSolver gr
+        ordret = lexCell [1..siz] $ order gr
+        ord = fmap snd ordret
+        glout = glouton gr ord
+    print (score gr opt, score gr glout)
+    putStrLn $ "opt=" ++ show opt ++ " lexcell=" ++ show glout ++  " order=" ++ show ord
+    putStrLn $ "total order=" ++ unlines (fmap show  ordret)
+    rand <- randomSol gr
+    putStrLn $ "random=" ++ show rand ++ " val= " ++ show (score gr rand)
