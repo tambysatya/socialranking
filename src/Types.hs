@@ -7,6 +7,7 @@ import Data.Function
 import Data.Maybe
 
 newtype Coalition a = Coalition (S.Set a)
+    deriving (Eq, Ord)
 
 newtype TotalPreorder a = TotalPreorder (M.IntMap [a])
 
@@ -72,4 +73,13 @@ lexCell eltorank (TotalPreorder l) = ret
 printCell :: (Show a) => [([Int],a)] -> IO ()
 printCell l = putStrLn $ unlines $ fmap show l
 
+
+mkOrder :: (Ord a) => [(Int,a)] -> TotalPreorder a
+mkOrder ls = TotalPreorder $ M.fromList $ pack ls
+
+pack :: [(Int,a)] -> [(Int,[a])]
+pack ls = vals
+    where sorted = L.sortBy (compare `on` fst) ls
+          packed = L.groupBy ((==) `on` fst) sorted
+          vals = [(si, coals) | e <- packed, let si = fst $ head e, let coals = snd <$> e]
 
