@@ -2,8 +2,11 @@ module Main (main) where
 
 import Graph
 import Types
-import Plot 
 import IS.MIP
+
+import Utils
+import Plot 
+import TestMIP
 
 import qualified Data.IntMap as M
 import qualified Data.List as L
@@ -15,7 +18,7 @@ import System.Random
 
 
 main :: IO ()
-main = void testMIP
+main = void mainMIP
 --main = plotEasy --mainLarge
 
 
@@ -152,13 +155,6 @@ fasterRandomOrder gr len keepprob set = do
                             else fasterRandomOrder gr (len-1) keepprob (S.insert entry set) 
 
         
-glouton :: Graph -> [Int] -> [Int]
-glouton gr [] = []
-glouton gr (c:candidates) = c:glouton gr (candidates L.\\ neighbors gr c)
-
-randomSol :: Graph -> IO [Int]
-randomSol gr = glouton gr <$> shuffleM (M.keys gr)
-
 
 
 

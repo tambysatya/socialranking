@@ -25,7 +25,11 @@ genCoalition :: Graph -> Int -> IO (Coalition Int)
 genCoalition gr siz = mkCoalition . take siz <$> shuffleM [1..n]
     where n = M.size gr
 
-
+genExactlyN :: Graph
+            -> Int -- number of iterations
+            -> Int -- length of each coalition
+            -> IO (S.Set (Coalition Int))
+genExactlyN gr nIt len = foldM (\acc _ -> flip S.insert acc <$> genCoalition gr len) S.empty [1..nIt]
 genAtMostN :: Graph
            -> Int  -- number of iterations
            -> Int  -- maximum length
