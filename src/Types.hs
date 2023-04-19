@@ -60,6 +60,11 @@ allSubsets' :: (Ord a) => [a] -> [S.Set a]
 allSubsets' [] = error "allSubsets called on an empty list and cannot contain the empty coalition"
 allSubsets' [x] = [S.fromList [x]] 
 allSubsets' (x:xs) = [S.fromList [x]] ++ allSubsets' xs ++ fmap (S.insert x) (allSubsets' xs)
+allSubsetsN :: Int -> [a] -> [[a]]
+allSubsetsN _ [] = []
+allSubsetsN 0 _ = []
+allSubsetsN 1 (x:xs) = [x] :allSubsetsN 1 xs
+allSubsetsN n (x:xs) = fmap (x:) (allSubsetsN (n-1) xs) ++ allSubsetsN n xs
 
 lexCell :: (Ord a) => [a] -> TotalPreorder (Coalition a) -> [([Int],a)]
 lexCell eltorank (TotalPreorder l) = ret

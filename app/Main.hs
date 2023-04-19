@@ -3,6 +3,7 @@ module Main (main) where
 import Graph
 import Types
 import IS.MIP
+import IPSolver
 
 import Utils
 import Plot 
@@ -18,7 +19,8 @@ import System.Random
 
 
 main :: IO ()
-main = void mainMIP
+main = plotEasyN
+--main = void mainMIP
 --main = plotEasy --mainLarge
 
 
@@ -66,6 +68,32 @@ mainEasy = do
          configs = [(wi,prob,perc,i) | wi <- wmax, prob <- probs, perc <- percentages, i <- [1..ninstances]]
          logfile = "logeasy.txt"
 
+plotEasyN = do
+  b <- doesFileExist logfile
+  when (not b) $ writeHeader logfile
+  results <- forM densities $ \di -> do 
+      res <- forM ls $ \l -> do --forM_ configs $ \(wi, prob, perc,i) -> do 
+        r <- forM [1..10] $ \i -> do
+                r <- testN 20 di size l
+                appendFile logfile $ show r ++ "\n"
+                print r
+                pure r
+        pure (totake pi,r)
+      plotErrorIO  ("Figures/error_" ++ show di ++ ".png") [(show di ++ " % edges",res)]
+      pure (show di ++ " % edges", res)
+  pure ()
+  plotErrorIO ("Figures/error.png") results
+    
+   where wmax = [20]
+         densities = [0.25,0.5,0.75]
+         ls = [2,3]
+         ninstances = 10
+         logfile = "nfirst.txt"
+         size = 100
+         totake pi = fromIntegral (truncate $ pi * (2^size-1))
+
+
+
 plotEasy = do
   b <- doesFileExist logfile
   when (not b) $ writeHeader logfile
@@ -97,6 +125,37 @@ plotEasy = do
 
 mkISOrder :: Graph -> [[Int]] -> TotalPreorder (Coalition Int)
 mkISOrder gr coals = mkCoalitionOrder (_fromWeight . score gr) (isSolver . subGraph gr <$> coals)
+testN :: Int  -- max weight to be sampled
+     -> Double  -- density (% of two vertices to be connected)
+     -> Int     -- number of vertices
+     -> Int -- max siz of coalitions
+     -> IO Result
+testN wmax prob siz l = do
+    env <- newIloEnv 
+    gr <- mkRandomGraph (Weight wmax) prob siz
+    rnd <- randomSol gr
+    
+    datas <- orderN env l gr
+
+    let opt = isSolver gr
+        ordret = reverse $ lexCell [1..siz] datas
+        ord = fmap snd ordret
+        glout = glouton gr ord
+        scoreopt = _fromWeight $ score gr opt
+        scoreglout = _fromWeight $ score gr glout
+        scorernd = _fromWeight $ score gr rnd
+
+        
+
+    print (scoreopt,scoreglout,scorernd)
+    pure $ Result siz wmax prob (fromIntegral l) scoreopt scoreglout scorernd
+
+
+  where ncoal = 2^siz - 2
+        totake = l
+
+
+
 test :: Int  -- max weight to be sampled
      -> Double  -- density (% of two vertices to be connected)
      -> Int     -- number of vertices
@@ -141,6 +200,14 @@ test wmax prob siz percentage acceptp = do
 
 order gr = mkISOrder gr $ allSubsets [1..n] 
     where n = M.size gr
+
+orderN env n gr = mkOrder <$> evalSets 
+    where set = concat [allSubsetsN i [1..M.size gr] | i <- [1..n]]
+          evalSets = do 
+                        putStrLn $ "evaluating: " ++ show (length set) ++ " coalitions."
+                        forM set $ \seti -> do (opt,_) <- solveIS env (subGraph gr seti)
+                                               pure (opt, mkCoalition seti)
+
 randomOrder gr len = do
         selected <- take len <$> shuffleM candidates
         pure $ mkISOrder gr selected

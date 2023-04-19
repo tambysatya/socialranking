@@ -49,6 +49,9 @@ executables:
   socialranking-exe:
     main:                Main.hs
     source-dirs:         app
+    ghc-options:
+    - -rtsopts
+
     dependencies:
     - socialranking
 

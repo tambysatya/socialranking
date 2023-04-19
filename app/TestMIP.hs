@@ -18,23 +18,22 @@ import IPSolver
 
 
 mainMIP = do
-   let siz = 200
-       maxlens = [50,100] --[5,10,15] -- [5,10,25]
+   let siz = 300
+       maxlens = [50,100,150] --[5,10,15] -- [5,10,25]
 
-       nits = [10,1000,2000,5000] -- [10,100,250,500,750,1000,1250,1500]
+       nits = [10,1000, 2000, 3000] --,2000,5000] -- [10,100,250,500,750,1000,1250,1500]
        
        maxw = 20
        density = 0.5
        gparam = GraphParam siz maxw density
        instype = "exacts"
-       path maxlen = instype ++ "/maxlen-"++ show maxlen ++ "-"
    curves <- forM maxlens $ \maxlen -> do
                 datas <- forM nits $ \nit -> do
                         (epsgap,errsel) <- mainMIP' gparam nit maxlen
                         pure ((fromIntegral nit,epsgap), (fromIntegral nit, errsel))
                 let (curveseps, curvessel) = unzip datas
-                writeFile (paramToFile ("datas/err-" ++ path maxlen) gparam) $  show curveseps -- epsgap       
-                writeFile (paramToFile ("datas/sel-" ++ path maxlen) gparam) $  show curvessel -- selection error
+                writeFile (paramToFile ("datas/err-" ++ path instype maxlen) gparam) $  show curveseps -- epsgap       
+                writeFile (paramToFile ("datas/sel-" ++ path instype maxlen) gparam) $  show curvessel -- selection error
                 pure ((show maxlen, curveseps), (show maxlen, curvessel))
    let (eps,sel) = unzip curves
    plotError "number of coalitions" "% error" ("Figures/mipsel_"++instype++"-" ++ paramToFile "" gparam ++ ".png") sel
