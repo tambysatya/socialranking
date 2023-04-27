@@ -8,6 +8,7 @@ import IPSolver
 import Utils
 import Plot 
 import TestMIP
+import qualified Main_IS as IS
 
 import qualified Data.IntMap as M
 import qualified Data.List as L
@@ -19,7 +20,10 @@ import System.Random
 
 
 main :: IO ()
-main = plotEasyN
+main = do 
+    void $ IS.test "maxis_len.log" 20 100 0.5 2
+    void $ IS.test "maxis_len.log" 20 100 0.5 3
+--main = plotEasyN
 --main = void mainMIP
 --main = plotEasy --mainLarge
 
@@ -205,7 +209,7 @@ orderN env n gr = mkOrder <$> evalSets
     where set = concat [allSubsetsN i [1..M.size gr] | i <- [1..n]]
           evalSets = do 
                         putStrLn $ "evaluating: " ++ show (length set) ++ " coalitions."
-                        forM set $ \seti -> do (opt,_) <- solveIS env (subGraph gr seti)
+                        forM set $ \seti -> do (opt,_) <- solveWeightedIS env (subGraph gr seti)
                                                pure (opt, mkCoalition seti)
 
 randomOrder gr len = do

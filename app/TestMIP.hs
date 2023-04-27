@@ -119,7 +119,7 @@ unzip4 _ = error "unzip4: must contain a 4-upple"
 mkTest :: IloEnv -> Graph -> S.Set (Coalition Int) -> IO (Int,Int,Int,Double)
 mkTest env gr coals = do
     let  scoremip :: Coalition Int -> IO Int
-         scoremip coal = fst <$> solveIS env (subGraph gr $ toList coal)
+         scoremip coal = fst <$> solveWeightedIS env (subGraph gr $ toList coal)
     order <- mkOrderIO scoremip $ S.toList coals
     putStrLn $ "computed"
     rnd <- do
@@ -127,7 +127,7 @@ mkTest env gr coals = do
         putStrLn "running glouton"
         pure $ glouton gr ord
     putStr "solving the mip..."
-    (optval,opt) <- solveIS env gr
+    (optval,opt) <- solveWeightedIS env gr
     putStrLn "done"
 
     let rank = reverse $ snd <$> lexCell [1..n] order

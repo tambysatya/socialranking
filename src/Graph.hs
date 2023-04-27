@@ -8,6 +8,7 @@ import System.Random
 import System.Random.Shuffle
 import Control.Monad
 import Data.Foldable
+import Data.Function
 import qualified Data.List as L
 
 
@@ -20,6 +21,9 @@ type Graph = M.IntMap (Weight,M.IntMap ())
 
 neighbors :: Graph -> Int -> [Int]
 neighbors g v = M.keys $ snd $ fromJust $ g ^. at v
+
+degree :: Graph -> Int -> Int
+degree g v = length $ neighbors g v
 
 
 insertDirectedEdges :: Graph -> Int -> [Int] -> Graph
@@ -83,5 +87,12 @@ isSolver gr
                               with = c: isSolver (isUpdate gr c)
                           in if score gr without >= score gr with then without else with
         where candidates = M.keys gr
+isGreed gr = isGreed' gr
+    where isGreed' g 
+                | M.null g = []
+                | otherwise = let (v:vs) = L.sortBy (compare `on` (degree g)) $ M.keys g
+                                  g' = foldr (\el acc -> deleteNode acc el) g (neighbors g v)
+                              in v:(isGreed' $ deleteNode g' v)
+                                  
 
 
