@@ -5,26 +5,31 @@ from operator import itemgetter
 import torch
 
 
-# generateCorrelatedKP :: Int -> Int -> (Weights -> IO Cost) -> (Costs, Weights, Cmax)
-# une fonction generale pour creer des instances correlees
-def generateCorrelatedKP (nbItems, valrange, correlation):
+# generateCorrelatedKP :: Int -> Int ->  Int -> (Cost -> IO Weight) -> (Costs, Weights, Cmax)
+def generateCorrelatedKPND (nbItems, valrange,n, correlation):
     #from Pisinger D., 2005
 
-    weights = list (map (lambda i: random.randint(1,valrange), range(0,nbItems)) )
-    values = list (map (correlation, weights))
-    cmax = sum (weights) / 2
+    #values = list (map (correlation, weights))
+    values = [random.randint (1,valrange) for i in range (nbItems)]
+    weights = []
+    bs = []
+    for i in range(n):
+        coefs = list (map (correlation, values))
+        #coefs = list (map (lambda i: random.randint(1,valrange), range(0,nbItems)) )
+        weights.append(coefs)
+        bs.append(sum (coefs) / 2)
 
-    
-    return Problem(values, [weights], [cmax])
+    return Problem(values, weights, bs)
 
-def generateStronglyCorrelatedKP (nbItems, valrange):
-    return generateCorrelatedKP (nbItems, valrange, lambda wi: wi + valrange/10)
 
-def generateWeaklyCorrelatedKP (nbItems, valrange):
-    return generateCorrelatedKP (nbItems, valrange, lambda wi: random.randint(wi - valrange/10, wi + valrange/10))
+def generateStronglyCorrelatedKPND (nbItems, valrange, nd):
+    return generateCorrelatedKPND (nbItems, valrange,nd, lambda wi: wi + valrange/10)
 
-def generateUniformKP (nbItems, valrange):
-    return generateCorrelatedKP (nbItems, valrange, lambda wi: random.randint(1,valrange))
+def generateWeaklyCorrelatedKPND (nbItems, valrange, nd):
+    return generateCorrelatedKPND (nbItems, valrange, nd, lambda wi: random.randint(wi - valrange/10, wi + valrange/10))
+
+def generateUniformKPND (nbItems, valrange, nd):
+    return generateCorrelatedKPND (nbItems, valrange, nd, lambda wi: random.randint(1,valrange))
 
 
 

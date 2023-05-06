@@ -1,5 +1,5 @@
 
-from MIP.kp import generateUniformKP, generateWeaklyCorrelatedKP, generateStronglyCorrelatedKP, kp_greedy
+from MIP.kp import generateUniformKPND, generateWeaklyCorrelatedKPND, generateStronglyCorrelatedKPND, kp_greedy
 from lexcell import lex_cell, random_coalitions
 from operator import itemgetter
 import random
@@ -26,10 +26,32 @@ import random
 #print (kp.greedy(order))
 
 n=100
+def test_kpnd(n_individuals, nd):
+    individuals = set(range(n_individuals))
+    kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
+    coals = random_coalitions(individuals, 20, 1000)
+    scores = list (map (itemgetter(0),map (kp.solve_coalition, coals)))
+
+    order = lex_cell(individuals,coals, scores)
+
+    opt = kp.solve()[0]
+    lex = kp.greedy(order)
+    order = lex_cell(individuals,coals, scores)
+    order.reverse()
+    rev_lex = kp.greedy(order)
+
+
+    rnd_order = list(range(n_individuals))
+    random.shuffle(rnd_order)
+    rnd = kp.greedy(rnd_order)
+
+
+    print ("opt=",opt," lex=", lex, " rev_lex=", rev_lex, " rnd=", rnd)
+
 
 def test_kp(n_individuals):
     individuals = set(range(n_individuals))
-    kp = generateStronglyCorrelatedKP(n_individuals,1000)
+    kp = generateStronglyCorrelatedKPND(n_individuals,1000, 1)
     #kp = generateWeaklyCorrelatedKP(100,1000)
     #kp = generateUniformKP (100,1000)
     real_greedy_order = kp_greedy(kp.objcoefs, kp.A[0])
@@ -56,6 +78,6 @@ def test_kp(n_individuals):
     print ("opt=",opt," lex=", lex, " rev_lex=", rev_lex, " real=", real_greedy, " rnd=", rnd)
 
 for i in range(10):
-    test_kp(n)
+    test_kpnd(n, 5)
 
 
