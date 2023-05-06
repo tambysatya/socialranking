@@ -1,6 +1,8 @@
 
 from MIP.problem import Problem
 import random
+from operator import itemgetter
+import torch
 
 
 # generateCorrelatedKP :: Int -> Int -> (Weights -> IO Cost) -> (Costs, Weights, Cmax)
@@ -25,6 +27,15 @@ def generateUniformKP (nbItems, valrange):
     return generateCorrelatedKP (nbItems, valrange, lambda wi: random.randint(1,valrange))
 
 
+
+def kp_greedy (objcoefs, weights):
+    individuals = list (range(len(objcoefs)))
+    scores = list(torch.tensor(objcoefs) / torch.tensor(weights))
+
+    order = map (itemgetter(1),sorted(zip (scores, individuals), reverse=True))
+    return list(order)
+
+    
 
 
         

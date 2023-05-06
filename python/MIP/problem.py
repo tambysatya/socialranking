@@ -30,6 +30,11 @@ class Problem:
         """
         self.var_index = set(range(len(objcoefs)))
         self.pb = init_cplex()
+
+        self.objcoefs = objcoefs
+        self.A = A
+        self.b = b
+
         vars = list (map (lambda vi: "x" + str(vi), range (0,len(objcoefs))) )
 
         types = list( map (lambda vi: 'B', objcoefs))
@@ -56,6 +61,29 @@ class Problem:
         self.pb.variables.set_upper_bounds(zip (fixed_vars,itertools.repeat(1)))
 
         return opt, sol
+
+    def greedy_ (self, order, bs):
+        if order == []:
+            return 0
+        
+        xi = order.pop(0)
+        new_bs = bs.clone()
+
+        for i, (row, bi) in enumerate(zip (self.A, bs)):
+            new_bs[i] = bi - row[xi] 
+            if new_bs[i] < 0: #cannot be added: violates constraint i
+                #print ("cut=" + xi)
+                return self.greedy_(order, bs)
+        ret = self.objcoefs[xi] + self.greedy_(order, new_bs)
+        return ret
+    
+    def greedy (self, order):
+        return self.greedy_(order, torch.tensor(self.b))
+
+    def display (self):
+        print ("objs=" + str (self.objcoefs) + "  s.t. " + str(self.A) + " <= " + str(self.b))
+
+            
         
         
 

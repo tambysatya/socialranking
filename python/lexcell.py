@@ -1,6 +1,7 @@
 
 from operator import itemgetter
 import itertools
+import random
 
 
 def nb_coalitions_ei_belongs_to (el, coals):
@@ -32,7 +33,23 @@ def lex_cell (individuals, coalitions, scores):
     return list(lex_order)
 
 
+def random_coalition (individuals, l):
+    inds = list(individuals)
+    random.shuffle(inds)
+    return set(inds[:l])
+
+def random_coalitions (individuals, l, n): 
+    """generates at most n coalitions of size n"""
+    ret = [random_coalition(individuals,l) for i in range (n)]
+    return [k for k, v in itertools.groupby(sorted(ret)) ]
+    
+    
 
 
-ret = lex_cell ([1,2,3,4], [{1,2},{3,2},{1,3}, {1,4}], [3,1,2,1])
-print(ret)
+#ret = lex_cell ([1,2,3,4], [{1,2},{3,2},{1,3}, {1,4}], [3,1,2,1])
+#print(ret)
+
+#inds = {1,2,3,4,5,6,7,8,9,10}
+#ret = random_coalition ({1,2,3,4,5}, 3)
+#ret = random_coalitions(inds, 3, 5)
+#print (ret)
