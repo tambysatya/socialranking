@@ -75,6 +75,17 @@ lexCell eltorank (TotalPreorder l) = ret
                            let coals = fromJust $ M.lookup ri l]
           ret = L.sortBy (compare `on` fst) [(lexRank a, a) | a <- eltorank]
 
+dualLexCell :: (Ord a) => [a] -> TotalPreorder (Coalition a) -> [([Int],a)]
+dualLexCell eltorank (TotalPreorder l) = ret
+    where eqclasses = L.sortBy (\x y -> x `compare` y) $ M.keys l  -- sort eq classes in ascendent order
+          nclasses = M.size l
+          lexRank a = [length [ci | ci <- coals, a `isIn` ci]
+                           | (i, ri) <- zip [1..] eqclasses ,
+                           let coals = fromJust $ M.lookup ri l]
+          ret = L.sortBy (compare `on` fst) [(lexRank a, a) | a <- eltorank]
+
+
+
 printCell :: (Show a) => [([Int],a)] -> IO ()
 printCell l = putStrLn $ unlines $ fmap show l
 

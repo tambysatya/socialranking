@@ -2,6 +2,7 @@
 module Graph where
 
 import qualified Data.IntMap as M
+import qualified Data.IntSet as S
 import Control.Lens
 import Data.Maybe
 import System.Random
@@ -16,7 +17,7 @@ import Types
 
 newtype Weight = Weight {_fromWeight :: Int}
     deriving (Num,Eq,Ord)
-type Graph = M.IntMap (Weight,M.IntMap ())
+type Graph = M.IntMap (Weight,M.IntMap Weight)
 
 
 neighbors :: Graph -> Int -> [Int]
@@ -25,19 +26,32 @@ neighbors g v = M.keys $ snd $ fromJust $ g ^. at v
 degree :: Graph -> Int -> Int
 degree g v = length $ neighbors g v
 
+weight :: Graph -> Int -> Weight
+weight g v = fst $ fromJust $ g ^. at v
 
-insertDirectedEdges :: Graph -> Int -> [Int] -> Graph
-insertDirectedEdges g i js = case i `M.lookup` g of
+edgeList :: Graph -> [((Int,Int),Weight)]
+edgeList g = [((vi,vj),w) | vi <- vs, (vj,w) <- M.assocs $ snd $ fromJust $ g ^. at vi, vj > vi]
+    where vs = M.keys g
+
+
+insertDirectedEdgesV :: Graph -> Int -> [(Int, Weight)] -> Graph
+insertDirectedEdgesV g i js = case i `M.lookup` g of
                                     Nothing -> error $ "node " ++ show i ++ " does not exists"
-                                    Just (val,neighs) -> g & at i .~ Just (val, M.union (M.fromList $ zip js $ repeat ()) neighs)
-insertUndirectedEdges :: Graph -> Int -> [Int] -> Graph
-insertUndirectedEdges gr src dsts = foldr f (insertDirectedEdges gr src dsts) dsts
-    where f el acc = insertDirectedEdges acc el [src]
+                                    Just (val,neighs) -> g & at i .~ Just (val, M.union (M.fromList js) neighs)
+insertUndirectedEdgesV :: Graph -> Int -> [(Int,Weight)] -> Graph
+insertUndirectedEdgesV gr src dsts = foldr f (insertDirectedEdgesV gr src dsts) dsts
+    where f (el,w) acc = insertDirectedEdgesV acc el [(src,w)]
 
-createNode :: Weight -> Graph -> Int -> IO Graph
-createNode (Weight maxw) gr i = do
+insertDirectedEdges g i js = insertDirectedEdgesV g i $ zip js (repeat 0)
+insertUndirectedEdges g i js = insertUndirectedEdgesV g i $ zip js (repeat 0)
+
+createNodeV :: Weight -> Graph -> Int -> IO Graph
+createNodeV (Weight maxw) gr i = do
     v <- randomRIO (1,maxw)
     pure $ gr & at i .~ Just (Weight v,M.empty)
+createNode :: Graph -> Int -> IO Graph
+createNode gr i = createNodeV (Weight 0) gr i
+    
 
 
 {-| Remove a nodes from the graph and from the neighborhood lists -}
@@ -52,22 +66,38 @@ deleteNode gr i = gr' & at i .~ Nothing
 subGraph :: Graph -> [Int] -> Graph
 subGraph g ls = foldl' deleteNode g $ vertices L.\\ ls
     where vertices = M.keys g
+subGraphFromEdge :: Graph -> [((Int,Int),Weight)] -> Graph
+--subGraphFromEdge gr l = subGraph gr allowedVertices
+subGraphFromEdge g l = fmap (\(w,neighs) -> (w, M.restrictKeys neighs allowedVertices)) $ M.restrictKeys g allowedVertices
+    where edges = fst <$> l
+          allowedVertices = S.fromList $ L.nub $ fmap fst edges ++ fmap snd edges
+    
 
 mkRandomGraph :: Weight -> Double -> Int -> IO Graph
 mkRandomGraph maxweight prob siz = foldM f M.empty [1..siz]
     where f acc el =  do 
-                acc' <- createNode maxweight acc el
+                acc' <- createNodeV maxweight acc el
 
                 let sampleEdge ni = do
                         pr <- randomRIO (0,1)
-                        -- debug
-                        --print (ni,pr)
-                        --- when (pr <= prob) $ putStrLn $ "adding: " ++ show (el,ni)
-
                         pure $ pr <= prob
                 samples <- mapM sampleEdge [el-1,el-2 .. 1]
                 let nedges = [i | (i,si) <- zip [el-1, el-2..1] samples, si == True]
                 pure $ insertUndirectedEdges acc' el nedges
+
+mkRandomGraphW :: Weight -> Double -> Int -> IO Graph
+mkRandomGraphW maxweight prob siz = foldM f M.empty [1..siz]
+    where f acc el =  do 
+                acc' <- createNodeV maxweight acc el
+
+                let sampleEdge ni = do
+                        pr <- randomRIO (0,1)
+                        pure $ pr <= prob
+                samples <- mapM sampleEdge [el-1,el-2 .. 1]
+                let nedges = [i | (i,si) <- zip [el-1, el-2..1] samples, si == True]
+                weights <- sequence [Weight <$> randomRIO (1,_fromWeight maxweight) | _ <- nedges]
+                pure $ insertUndirectedEdgesV acc' el $ zip nedges weights
+
 
 instance Show Weight where show (Weight v) = "W:" ++ show v
 
@@ -87,12 +117,19 @@ isSolver gr
                               with = c: isSolver (isUpdate gr c)
                           in if score gr without >= score gr with then without else with
         where candidates = M.keys gr
-isGreed gr = isGreed' gr
+isGreedLen gr = isGreed' gr
     where isGreed' g 
                 | M.null g = []
                 | otherwise = let (v:vs) = L.sortBy (compare `on` (degree g)) $ M.keys g
                                   g' = foldr (\el acc -> deleteNode acc el) g (neighbors g v)
                               in v:(isGreed' $ deleteNode g' v)
                                   
-
+isGreedMax gr = isGreed' gr
+    where isGreed' g 
+                | M.null g = []
+                | otherwise = let (v:vs) = L.sortBy (compare `on` f) $ M.keys g
+                                  g' = foldr (\el acc -> deleteNode acc el) g (neighbors g v)
+                                  f vi = - (fromIntegral $ _fromWeight $ weight g vi) / (fromIntegral $ degree g vi + 1)
+                              in v:(isGreed' $ deleteNode g' v)
+ 
 

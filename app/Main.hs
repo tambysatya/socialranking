@@ -9,6 +9,7 @@ import Utils
 import Plot 
 import TestMIP
 import qualified Main_IS as IS
+import qualified Main_matching as Matching
 
 import qualified Data.IntMap as M
 import qualified Data.List as L
@@ -21,8 +22,18 @@ import System.Random
 
 main :: IO ()
 main = do 
-    void $ IS.test "maxis_len.log" 20 100 0.5 2
-    void $ IS.test "maxis_len.log" 20 100 0.5 3
+    void $ IS.testISWeightDual "logs/dual_maxis_weight.log" 20 100 0.5 2
+    void $ IS.testISLenDual "logs/dual_maxis_len.log" 20 100 0.5 2
+
+
+    void $ Matching.testMatchingDual "logs/dual_matching.log" 20 100 0.5 2
+    --void $ IS.testISWeight "logs/maxis_weight.log" 20 100 0.5 2
+    --void $ IS.testISLen "logs/maxis_len.log" 20 100 0.5 2
+
+    --void $ IS.testISWeight "logs/maxis_weight.log" 20 100 0.5 3
+    --void $ IS.testISLen "logs/maxis_len.log" 20 100 0.5 3
+    --void $ IS.test "maxis_len.log" 20 100 0.5 2
+    --void $ IS.test "maxis_len.log" 20 100 0.5 3
 --main = plotEasyN
 --main = void mainMIP
 --main = plotEasy --mainLarge
