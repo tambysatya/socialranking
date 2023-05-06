@@ -25,7 +25,7 @@ import random
 #print (kp.display())
 #print (kp.greedy(order))
 
-n=100
+n=300
 def test_kpnd(n_individuals, nd):
     individuals = set(range(n_individuals))
     kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
@@ -51,9 +51,9 @@ def test_kpnd(n_individuals, nd):
 
 def test_kp(n_individuals):
     individuals = set(range(n_individuals))
-    kp = generateStronglyCorrelatedKPND(n_individuals,1000, 1)
-    #kp = generateWeaklyCorrelatedKP(100,1000)
-    #kp = generateUniformKP (100,1000)
+    #kp = generateStronglyCorrelatedKPND(n_individuals,1000, 1)
+    #kp = generateWeaklyCorrelatedKP(100,1000) #juste avant
+    kp = generateUniformKP (100,1000)
     real_greedy_order = kp_greedy(kp.objcoefs, kp.A[0])
     real_greedy = kp.greedy(real_greedy_order)
     coals = random_coalitions(individuals, 20, 5000)
