@@ -9,14 +9,13 @@ def nb_coalitions_ei_belongs_to (el, coals):
     return (len([1 for gi in coals[1] if el in gi]))    
 def nb_total_sorted_coalitions_ei_belongs_to (el, grouped_coals):
     #print (el, list(grouped_coals))
-    _,coals = itertools.tee(grouped_coals, 2)
-    return list(map (lambda gi: nb_coalitions_ei_belongs_to(el,gi), coals))
+    return list(map (lambda gi: nb_coalitions_ei_belongs_to(el,gi), grouped_coals))
 
     
 
 def lex_cell (individuals, coalitions, scores):
     #print (individuals)
-    sorted_coals = sorted (zip (scores, coalitions))
+    sorted_coals = sorted (zip (scores, coalitions), reverse=True)
 
     grouped_coals = itertools.groupby(sorted_coals, key=itemgetter(0))
     grouped_coals = map (lambda x: (x[0], list(map (itemgetter(1), x[1]))), grouped_coals) #group by list
@@ -42,6 +41,39 @@ def random_coalitions (individuals, l, n):
     """generates at most n coalitions of size n"""
     ret = [random_coalition(individuals,l) for i in range (n)]
     return [k for k, v in itertools.groupby(sorted(ret)) ]
+
+################## extended version
+
+def is_in_coal (el, coal): # Int -> ([{0,1}], [Int]) -> Bool
+    """ true if el belongs to the coalition AND is selected (ie ==1) """
+    pos, inds = coal
+    return el in inds and  pos[el] == 1
+
+def nb_coals_equal_1(el, coals):
+    return len([ci for ci in coals if is_in_coal(el, ci)])
+
+def compute_eq_classes (el, grouped_coals):
+    return list(map (lambda gi: nb_coals_equal_1(el,gi), grouped_coals))
+ 
+def adv_lex_cell (individuals, coalitions, scores):
+    #print (individuals)
+    sorted_coals = sorted (zip (scores, coalitions), reverse=True)
+
+    grouped_coals = itertools.groupby(sorted_coals, key=itemgetter(0))
+    grouped_coals = map (lambda x: (list(map (itemgetter(1), x[1]))), grouped_coals) #group by list
+    #print (sorted_coals)
+
+
+
+    lex_scores = map (lambda ei, gcoals: compute_eq_classes(ei, gcoals), individuals, itertools.tee(grouped_coals, len(individuals)))
+    lex_scores = sorted (zip(lex_scores, individuals), reverse=True)
+
+    #print (list (lex_scores))
+    lex_order = map (itemgetter(1), lex_scores)
+    
+    return list(lex_order)
+
+   
     
     
 
