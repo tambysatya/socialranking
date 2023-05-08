@@ -2,6 +2,9 @@
 import torch
 import cplex
 import itertools
+import sys
+
+sys.setrecursionlimit(10000)
 
 def init_cplex ():
         '''

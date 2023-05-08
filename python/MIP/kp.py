@@ -40,6 +40,27 @@ def kp_greedy (objcoefs, weights):
     order = map (itemgetter(1),sorted(zip (scores, individuals), reverse=True))
     return list(order)
 
+def rndGenerateCorrelatedKPND (nbItems, valrange,n, correlation):
+    #from Pisinger D., 2005
+    """ random maximal capacity """
+
+    #values = list (map (correlation, weights))
+    values = [random.randint (1,valrange) for i in range (nbItems)]
+    weights = []
+    bs = []
+    for i in range(n):
+        coefs = list (map (correlation, values))
+        weights.append(coefs)
+        bi = random.randint (min(coefs), int(sum(coefs)/2))
+        bs.append(bi)
+    return Problem(values, weights, bs)
+def rndGenerateUniformKPND (nbItems, valrange, nd):
+    return rndGenerateCorrelatedKPND (nbItems, valrange, nd, lambda wi: random.randint(1,valrange))
+
+
+
+
+
     
 
 

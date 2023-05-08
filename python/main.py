@@ -1,8 +1,10 @@
 
 from MIP.kp import generateUniformKPND, generateWeaklyCorrelatedKPND, generateStronglyCorrelatedKPND, kp_greedy
+from MIP.kp import rndGenerateUniformKPND
 from lexcell import lex_cell, random_coalitions, adv_lex_cell
 from operator import itemgetter
 import random
+import numpy as np
 
 #f= [1,2]
 #A = [[2,3],[2,5]]
@@ -25,13 +27,17 @@ import random
 #print (kp.display())
 #print (kp.greedy(order))
 
-n=50
+n=1000
+l = 100
+ncoal = 100000
+
 def adv_test_kpnd(n_individuals, nd):
     individuals = set(range(n_individuals))
-    kp = generateUniformKPND(n_individuals,1000, nd)
+    kp = rndGenerateUniformKPND(n_individuals,1000, nd)
+    #kp = generateUniformKPND(n_individuals,1000, nd)
     #kp = generateWeaklyCorrelatedKPND(n_individuals,1000, nd)
     #kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
-    coals = random_coalitions(individuals, 35,200)
+    coals = random_coalitions(individuals, l,ncoal)
     print ("nb_coals=", len(coals))
     scores,sols = zip(*(list (map (kp.solve_coalition, coals))))
 
@@ -62,6 +68,8 @@ def adv_test_kpnd(n_individuals, nd):
     #real_greedy = kp.greedy(real_greedy_order)
     #print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd, " real_greed=", real_greedy)
     print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd)
+
+    return opt, adv_lex, lex, rnd
 
 
 def test_kpnd(n_individuals, nd):
@@ -115,7 +123,21 @@ def test_kp(n_individuals):
 
     print ("opt=",opt," lex=", lex, " rev_lex=", rev_lex, " real=", real_greedy, " rnd=", rnd)
 
+
+opttab, advtab, lextab, rndtab =[],[],[],[]
 for i in range(10):
-    adv_test_kpnd(n, 10)
+    opt,adv_lex, lex, rnd = adv_test_kpnd(n, 10)
+    opttab.append(opt)
+    advtab.append((adv_lex/opt)*100)
+    lextab.append((lex/opt)*100)
+    rndtab.append((rnd/opt)*100)
+
+opttab=np.array(opttab)
+advtab=np.array(advtab)
+lextab=np.array(lextab)
+rndtab=np.array(rndtab)
+
+print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean())
+
 
 
