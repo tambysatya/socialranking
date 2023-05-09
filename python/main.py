@@ -6,6 +6,8 @@ from lexcell import lex_cell, adv_lex_cell
 from operator import itemgetter
 import random
 import numpy as np
+import torch
+from tqdm import tqdm
 
 #f= [1,2]
 #A = [[2,3],[2,5]]
@@ -29,8 +31,25 @@ import numpy as np
 #print (kp.greedy(order))
 
 n=1000
-l = 10
-ncoal = 100
+l = 550
+ncoal = 10000
+
+def generate_dataset (n,l,nd,ncoal):
+    individuals = set(range(n))
+    kp = rndGenerateUniformKPND(n,1000,nd)
+    coals = random_coalitions(individuals, l,ncoal)
+    scores,sols = tqdm(zip(*(list (map (kp.solve_coalition, coals)))))
+
+    objs,A,b = kp.toTensor() 
+
+    coals = map (kp.tensorCoalition, coals)
+    inputs = list (map (lambda ci, si, soli: torch.cat([ci,torch.tensor([si]),torch.tensor(soli)],dim=0), coals, scores, sols))
+
+    print(inputs)
+    ret = torch.stack(inputs)
+    torch.save(ret,"dataset.pt")
+    
+    
 
 def adv_test_kpnd(n_individuals, nd):
     individuals = set(range(n_individuals))
@@ -125,20 +144,22 @@ def test_kp(n_individuals):
     print ("opt=",opt," lex=", lex, " rev_lex=", rev_lex, " real=", real_greedy, " rnd=", rnd)
 
 
-opttab, advtab, lextab, rndtab =[],[],[],[]
-for i in range(10):
-    opt,adv_lex, lex, rnd = adv_test_kpnd(n, 10)
-    opttab.append(opt)
-    advtab.append((adv_lex/opt)*100)
-    lextab.append((lex/opt)*100)
-    rndtab.append((rnd/opt)*100)
+generate_dataset (n,l,10,ncoal)
 
-opttab=np.array(opttab)
-advtab=np.array(advtab)
-lextab=np.array(lextab)
-rndtab=np.array(rndtab)
-
-print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean())
+#opttab, advtab, lextab, rndtab =[],[],[],[]
+#for i in range(10):
+#    opt,adv_lex, lex, rnd = adv_test_kpnd(n, 10)
+#    opttab.append(opt)
+#    advtab.append((adv_lex/opt)*100)
+#    lextab.append((lex/opt)*100)
+#    rndtab.append((rnd/opt)*100)
+#
+#opttab=np.array(opttab)
+#advtab=np.array(advtab)
+#lextab=np.array(lextab)
+#rndtab=np.array(rndtab)
+#
+#print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean())
 
 
 

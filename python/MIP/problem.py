@@ -95,7 +95,6 @@ class Problem:
         return objs, A, b
     def tensorCoalition (self, coal):
         x = torch.zeros(len (self.objcoefs))
-        print (x, list(coal), len(x))
         x[torch.tensor(list(coal))] = 1
         return x
 

@@ -10,6 +10,7 @@ in pkgs.mkShell {
     pkgs.tree
     pkgs.python3
     pkgs.python3.pkgs.pip
+    pkgs.python3.pkgs.tqdm
     #pkgs.python3.pkgs.pandas
     pkgs.python3.pkgs.pytorch
     #pkgs.python3.pkgs.gym
