@@ -3,6 +3,7 @@ import torch
 import cplex
 import itertools
 import sys
+import random
 
 sys.setrecursionlimit(10000)
 
@@ -85,9 +86,31 @@ class Problem:
 
     def display (self):
         print ("objs=" + str (self.objcoefs) + "  s.t. " + str(self.A) + " <= " + str(self.b))
+    
+    def toTensor (self):
+        objs = torch.tensor(self.objcoefs)
+        A = torch.tensor (self.A)
+        b= torch.tensor (self.b)
+
+        return objs, A, b
+    def tensorCoalition (self, coal):
+        x = torch.zeros(len (self.objcoefs))
+        print (x, list(coal), len(x))
+        x[torch.tensor(list(coal))] = 1
+        return x
 
             
-        
+def random_coalition (individuals, l):
+    inds = list(individuals)
+    random.shuffle(inds)
+    return set(inds[:l])
+
+def random_coalitions (individuals, l, n): 
+    """generates at most n coalitions of size n"""
+    ret = [random_coalition(individuals,l) for i in range (n)]
+    return [k for k, v in itertools.groupby(sorted(ret)) ]
+
+       
         
 
     

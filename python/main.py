@@ -1,7 +1,8 @@
 
 from MIP.kp import generateUniformKPND, generateWeaklyCorrelatedKPND, generateStronglyCorrelatedKPND, kp_greedy
 from MIP.kp import rndGenerateUniformKPND
-from lexcell import lex_cell, random_coalitions, adv_lex_cell
+from MIP.problem import random_coalitions
+from lexcell import lex_cell, adv_lex_cell
 from operator import itemgetter
 import random
 import numpy as np
@@ -28,8 +29,8 @@ import numpy as np
 #print (kp.greedy(order))
 
 n=1000
-l = 100
-ncoal = 100000
+l = 10
+ncoal = 100
 
 def adv_test_kpnd(n_individuals, nd):
     individuals = set(range(n_individuals))

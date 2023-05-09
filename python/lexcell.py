@@ -32,16 +32,6 @@ def lex_cell (individuals, coalitions, scores):
     return list(lex_order)
 
 
-def random_coalition (individuals, l):
-    inds = list(individuals)
-    random.shuffle(inds)
-    return set(inds[:l])
-
-def random_coalitions (individuals, l, n): 
-    """generates at most n coalitions of size n"""
-    ret = [random_coalition(individuals,l) for i in range (n)]
-    return [k for k, v in itertools.groupby(sorted(ret)) ]
-
 ################## extended version
 
 def is_in_coal (el, coal): # Int -> ([{0,1}], [Int]) -> Bool
