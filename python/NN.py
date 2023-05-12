@@ -3,7 +3,7 @@
 
 import sys,os,math,subprocess
 import torch
-import tensorflow as tf
+#import tensorflow as tf
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
@@ -11,16 +11,23 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
+n=100
+m=10
+hid=1000
+
 class TestNet (nn.Module):
-    def __init__ (self): 
+    def __init__ (self, bsize, objs, A, b): 
         super (TestNet, self).__init__()
         
-        self.linear = nn.Linear(1,50, bias=True) #f(x) = ax+b
-        self.linear2 = nn.Linear(50,1, bias = True)
+
+        self.instance = torch.cat((objs,A.reshape(n*m),b)).repeat(bsize,1)
+        self.linear = nn.Linear(n+n*m+m+n,hid, bias=True) #f(x) = ax+b
+        self.linear2 = nn.Linear(hid,n+1, bias = True)
 
 
     def forward (self, x):
-        x = self.linear(x)
+        inputs = torch.cat((self.instance,x), dim=1)
+        x = self.linear(inputs)
         x = F.relu(x)
         y = self.linear2(x)
         return y
@@ -33,14 +40,6 @@ class TestNet (nn.Module):
         return loss
 
    
-def generate_dataset(size):
-    ret = []
-    for i in range(size):
-        x = torch.rand([1,1])
-        f_x = x**0.5  + 4
-        #f_x = x + 4
-        ret.append([x,f_x])
-    return torch.tensor(ret)
 def plot_grads(model):
     total_norm = 0
     for param in model.parameters():
@@ -50,12 +49,12 @@ def plot_grads(model):
     total_norm = total_norm ** 0.5
     return total_norm
 
-def train(model,epoch, size,lossfunction=F.l1_loss):
+def train(model,epoch, batch_size,lossfunction=F.l1_loss):
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    writer = SummaryWriter(comment=" olivier")
-    dataset = generate_dataset(size)
-    batch_size = 100
-    
+    writer = SummaryWriter(comment="n-100_p-10_rnd")
+    dataset = torch.load("dataset.pt")
+   
+    print ("loaded")
     dataset = DataLoader(dataset, batch_size = batch_size, shuffle=True)
     
     count=0
@@ -63,13 +62,18 @@ def train(model,epoch, size,lossfunction=F.l1_loss):
         for batch in dataset:
             loss = 0
             # loss = model.learn(optimizer, dataset)
-            x, f_x = batch[:,0].reshape([batch_size, 1]), batch[:,1].reshape([batch_size,1])
-            x = x.to(device)
-            f_x = f_x.to(device)
-            y = model.forward(x)
+            #x, f_x = batch[:,0].reshape([batch_size, 1]), batch[:,1].reshape([batch_size,1])
+            x = batch[:,:n]
+            #opt=batch[:,n]
+            #sol=batch[:,n+1:]
+            target=batch[:,n:]
 
-            #loss = F.l1_loss(f_x, y)
-            #loss = F.mse_loss(f_x, y)
+            x = x.to(device)
+            #opt = opt.to(device)
+            #sol = sol.to(device)
+            y = model.forward(x)
+            print("sizes=", y.size(), target.size())
+
             loss = lossfunction(f_x, y)
             loss.backward()
             optimizer.step() # un pas de la descente de gradient
@@ -120,16 +124,26 @@ def auto_gpu_selection(usage_max=0.01, mem_max=0.05):
         
 if __name__ == '__main__':
     if not sys.argv[2:]:
-        sys.stdout.write("Size needed in argument : epoch datasetsize\n")
+        sys.stdout.write("Size needed in argument : epoch batchsize\n")
         sys.exit(0)
 
-    #use_cuda = torch.cuda.is_available()
+    use_cuda = torch.cuda.is_available()
     #device = torch.device("cuda:1" if use_cuda else "cpu")
-    device = torch.device(auto_gpu_selection())
+    device = None
+    if use_cuda:
+        device = torch.device(auto_gpu_selection())
+    else:
+        device = torch.device("cpu")
 
     torch.set_default_dtype(torch.float32)
+
+    batchsize = int(sys.argv[2])
+    A = torch.load("A.pt").to(device)
+    objs = torch.load("objs.pt").to(device)
+    b = torch.load("b.pt").to(device)
+ 
     
-    model = TestNet().to(device)    
+    model = TestNet(batchsize,objs,A,b).to(device)    
     print("before training")
     #show_params(model)
     #train(5,int(1e7))

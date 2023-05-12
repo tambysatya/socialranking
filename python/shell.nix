@@ -14,7 +14,7 @@ in pkgs.mkShell {
     #pkgs.python3.pkgs.pandas
     pkgs.python3.pkgs.pytorch
     #pkgs.python3.pkgs.gym
-    #pkgs.python3.pkgs.tensorflow-tensorboard
+    pkgs.python3.pkgs.tensorflow-tensorboard
     #pkgs.python3.pkgs.sklearn
   ];
   shellHook = ''

@@ -7,7 +7,6 @@ from operator import itemgetter
 import random
 import numpy as np
 import torch
-from tqdm import tqdm
 
 #f= [1,2]
 #A = [[2,3],[2,5]]
@@ -30,33 +29,36 @@ from tqdm import tqdm
 #print (kp.display())
 #print (kp.greedy(order))
 
-n=1000
-l = 550
+n=100
+l = 50
+nd=10
 ncoal = 10000
 
 def generate_dataset (n,l,nd,ncoal):
     individuals = set(range(n))
     kp = rndGenerateUniformKPND(n,1000,nd)
     coals = random_coalitions(individuals, l,ncoal)
-    scores,sols = tqdm(zip(*(list (map (kp.solve_coalition, coals)))))
+    scores,sols = zip(*(list (map (kp.solve_coalition, coals))))
 
     objs,A,b = kp.toTensor() 
 
     coals = map (kp.tensorCoalition, coals)
     inputs = list (map (lambda ci, si, soli: torch.cat([ci,torch.tensor([si]),torch.tensor(soli)],dim=0), coals, scores, sols))
 
-    print(inputs)
     ret = torch.stack(inputs)
     torch.save(ret,"dataset.pt")
+    torch.save(A,"A.pt")
+    torch.save(objs,"objs.pt")
+    torch.save(b, "b.pt")
     
     
 
 def adv_test_kpnd(n_individuals, nd):
     individuals = set(range(n_individuals))
-    kp = rndGenerateUniformKPND(n_individuals,1000, nd)
+    #kp = rndGenerateUniformKPND(n_individuals,1000, nd)
     #kp = generateUniformKPND(n_individuals,1000, nd)
     #kp = generateWeaklyCorrelatedKPND(n_individuals,1000, nd)
-    #kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
+    kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
     coals = random_coalitions(individuals, l,ncoal)
     print ("nb_coals=", len(coals))
     scores,sols = zip(*(list (map (kp.solve_coalition, coals))))
@@ -83,13 +85,19 @@ def adv_test_kpnd(n_individuals, nd):
     random.shuffle(rnd_order)
     rnd = kp.greedy(rnd_order)
 
+    real_order = kp.trivial_order()
+    real =kp.greedy(real_order)
+    real_order = kp.trivial_order()
+    real_order.reverse()
+    rev_real = kp.greedy(real_order)
+
 
     #real_greedy_order = kp_greedy(kp.objcoefs, kp.A[0])
     #real_greedy = kp.greedy(real_greedy_order)
     #print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd, " real_greed=", real_greedy)
-    print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd)
+    print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd, " real=", real, " rev_real=", rev_real)
 
-    return opt, adv_lex, lex, rnd
+    return opt, adv_lex, lex, rnd, real
 
 
 def test_kpnd(n_individuals, nd):
@@ -144,22 +152,24 @@ def test_kp(n_individuals):
     print ("opt=",opt," lex=", lex, " rev_lex=", rev_lex, " real=", real_greedy, " rnd=", rnd)
 
 
-generate_dataset (n,l,10,ncoal)
+generate_dataset (n,l,nd,ncoal)
 
-#opttab, advtab, lextab, rndtab =[],[],[],[]
+#opttab, advtab, lextab, rndtab, realtab =[],[],[],[],[]
 #for i in range(10):
-#    opt,adv_lex, lex, rnd = adv_test_kpnd(n, 10)
+#    opt,adv_lex, lex, rnd, real = adv_test_kpnd(n, 10)
 #    opttab.append(opt)
 #    advtab.append((adv_lex/opt)*100)
 #    lextab.append((lex/opt)*100)
 #    rndtab.append((rnd/opt)*100)
+#    realtab.append((real/opt)*100)
 #
 #opttab=np.array(opttab)
 #advtab=np.array(advtab)
 #lextab=np.array(lextab)
 #rndtab=np.array(rndtab)
+#realtab = np.array(realtab)
 #
-#print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean())
-
-
+#print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean(), " real=", realtab.mean())
+#
+#
 

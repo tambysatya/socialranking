@@ -4,6 +4,7 @@ import cplex
 import itertools
 import sys
 import random
+from operator import itemgetter
 
 sys.setrecursionlimit(10000)
 
@@ -97,7 +98,19 @@ class Problem:
         x = torch.zeros(len (self.objcoefs))
         x[torch.tensor(list(coal))] = 1
         return x
+    
+    def trivial_order (self):
+        scores=[]
+        for i in range (len(self.objcoefs)):
+            w_i = 1
+            for j in range (len (self.A)):
+                w_i *= self.A[j][i]
+            
+            scores.append(self.objcoefs[i]/w_i)
 
+        ret = zip (scores, list(range(len(self.objcoefs))))
+        ret = sorted(ret, reverse=True)
+        return list(map(itemgetter(1),ret))
             
 def random_coalition (individuals, l):
     inds = list(individuals)

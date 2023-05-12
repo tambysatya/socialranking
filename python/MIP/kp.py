@@ -51,7 +51,7 @@ def rndGenerateCorrelatedKPND (nbItems, valrange,n, correlation):
     for i in range(n):
         coefs = list (map (correlation, values))
         weights.append(coefs)
-        bi = random.randint (min(coefs), int(sum(coefs)/2))
+        bi = random.randint (min(coefs), int(sum(coefs)))
         bs.append(bi)
     return Problem(values, weights, bs)
 def rndGenerateUniformKPND (nbItems, valrange, nd):
