@@ -13,7 +13,10 @@ from torch.utils.data import DataLoader
 
 n=100
 m=10
-hid=1000
+hid=1000000
+
+gpu="cuda:1"
+lr=1e-6
 
 class TestNet (nn.Module):
     def __init__ (self, bsize, objs, A, b): 
@@ -50,7 +53,7 @@ def plot_grads(model):
     return total_norm
 
 def train(model,epoch, batch_size,lossfunction=F.l1_loss):
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     writer = SummaryWriter(comment="n-100_p-10_rnd")
     dataset = torch.load("dataset.pt")
    
@@ -66,15 +69,15 @@ def train(model,epoch, batch_size,lossfunction=F.l1_loss):
             x = batch[:,:n]
             #opt=batch[:,n]
             #sol=batch[:,n+1:]
-            target=batch[:,n:]
+            target=batch[:,n:].to(device)
+            target[:n] = target[:n]/100000
 
             x = x.to(device)
             #opt = opt.to(device)
             #sol = sol.to(device)
             y = model.forward(x)
-            print("sizes=", y.size(), target.size())
 
-            loss = lossfunction(f_x, y)
+            loss = lossfunction(target, y)
             loss.backward()
             optimizer.step() # un pas de la descente de gradient
 
@@ -131,7 +134,8 @@ if __name__ == '__main__':
     #device = torch.device("cuda:1" if use_cuda else "cpu")
     device = None
     if use_cuda:
-        device = torch.device(auto_gpu_selection())
+        #device = torch.device(auto_gpu_selection())
+        device = torch.device(gpu)
     else:
         device = torch.device("cpu")
 
@@ -143,7 +147,7 @@ if __name__ == '__main__':
     b = torch.load("b.pt").to(device)
  
     
-    model = TestNet(batchsize,objs,A,b).to(device)    
+    model = TestNet(batchsize,objs/1000,A/1000,b/100000).to(device)    
     print("before training")
     #show_params(model)
     #train(5,int(1e7))
