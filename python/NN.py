@@ -13,10 +13,26 @@ from torch.utils.data import DataLoader
 
 n=100
 m=10
-hid=1000000
+hid=10000
 
 gpu="cuda:1"
 lr=1e-6
+
+class ResidualLinear (nn.Module):
+    def __init__(self, in_features, bias=True):
+        super (ResidualLinear, self).__init__()
+        self.linear1 = nn.Linear(in_features, in_features, bias=bias)
+        self.bn = nn.BatchNorm1d(in_features)
+        self.linear2 = nn.Linear(in_features, in_features, bias=bias)
+    def forward (self, data):
+        x = data
+        res = self.bn(x)
+        res = self.linear1(res)
+        res = F.relu(res)
+        res = self.linear2(res)
+        x = x + res
+        x = F.relu(x)
+        return x
 
 class TestNet (nn.Module):
     def __init__ (self, bsize, objs, A, b): 
@@ -24,14 +40,20 @@ class TestNet (nn.Module):
         
 
         self.instance = torch.cat((objs,A.reshape(n*m),b)).repeat(bsize,1)
-        self.linear = nn.Linear(n+n*m+m+n,hid, bias=True) #f(x) = ax+b
+        in_features = n+n*m+m+n
+        self.linear1 = nn.Linear(n+n*m+m+n,hid, bias=True) #f(x) = ax+b
+        self.b1 = ResidualLinear(hid)
+        self.b2 = ResidualLinear(hid)
         self.linear2 = nn.Linear(hid,n+1, bias = True)
+
 
 
     def forward (self, x):
         inputs = torch.cat((self.instance,x), dim=1)
-        x = self.linear(inputs)
+        x = self.linear1(inputs)
         x = F.relu(x)
+        x = self.b1(x)
+        x = self.b2(x)
         y = self.linear2(x)
         return y
 
