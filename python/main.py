@@ -29,10 +29,10 @@ import torch
 #print (kp.display())
 #print (kp.greedy(order))
 
-n=100
-l = 50
+n=1000
+l = 250
 nd=10
-ncoal = 10000
+ncoal = 10
 
 def generate_testset (n,l,nd,ncoal):
     individuals = set(range(n))
@@ -49,7 +49,7 @@ def generate_testset (n,l,nd,ncoal):
     inputs = list (map (lambda ci, si, soli: torch.cat([ci,torch.tensor([si]),torch.tensor(soli)],dim=0), coals, scores, sols))
 
     ret = torch.stack(inputs)
-    torch.save(ret,"testset.pt")
+    torch.save(ret,f"testset-{n}_{nd}_{l}.pt")
  
 def generate_dataset (n,l,nd,ncoal):
     individuals = set(range(n))
@@ -63,10 +63,10 @@ def generate_dataset (n,l,nd,ncoal):
     inputs = list (map (lambda ci, si, soli: torch.cat([ci,torch.tensor([si]),torch.tensor(soli)],dim=0), coals, scores, sols))
 
     ret = torch.stack(inputs)
-    torch.save(ret,"dataset.pt")
-    torch.save(A,"A.pt")
-    torch.save(objs,"objs.pt")
-    torch.save(b, "b.pt")
+    torch.save(ret,f"dataset-{n}_{nd}_{l}.pt")
+    torch.save(A,f"A-{n}_{nd}_{l}.pt")
+    torch.save(objs,f"objs-{n}_{nd}_{l}.pt")
+    torch.save(b, f"b-{n}_{nd}_{l}.pt")
     
     
 
@@ -169,8 +169,8 @@ def test_kp(n_individuals):
     print ("opt=",opt," lex=", lex, " rev_lex=", rev_lex, " real=", real_greedy, " rnd=", rnd)
 
 
-generate_testset (n,l,nd,100)
-#generate_dataset (n,l,nd,ncoal)
+generate_dataset (n,l,nd,ncoal)
+#generate_testset (n,l,nd,100)
 
 #opttab, advtab, lextab, rndtab, realtab =[],[],[],[],[]
 #for i in range(10):
