@@ -1,7 +1,7 @@
 
 from MIP.kp import generateUniformKPND, generateWeaklyCorrelatedKPND, generateStronglyCorrelatedKPND, kp_greedy
 from MIP.kp import rndGenerateUniformKPND
-from MIP.problem import random_coalitions
+from MIP.problem import random_coalitions, Problem
 from lexcell import lex_cell, adv_lex_cell
 from operator import itemgetter
 import random
@@ -34,6 +34,23 @@ l = 50
 nd=10
 ncoal = 10000
 
+def generate_testset (n,l,nd,ncoal):
+    individuals = set(range(n))
+    objcoefs = torch.load("objs.pt").tolist()
+    A= torch.load("A.pt").tolist()
+    b= torch.load("b.pt").tolist()
+    kp = Problem(objcoefs, A, b)
+    coals = random_coalitions(individuals, l,ncoal)
+    scores,sols = zip(*(list (map (kp.solve_coalition, coals))))
+
+    objs,A,b = kp.toTensor() 
+
+    coals = map (kp.tensorCoalition, coals)
+    inputs = list (map (lambda ci, si, soli: torch.cat([ci,torch.tensor([si]),torch.tensor(soli)],dim=0), coals, scores, sols))
+
+    ret = torch.stack(inputs)
+    torch.save(ret,"testset.pt")
+ 
 def generate_dataset (n,l,nd,ncoal):
     individuals = set(range(n))
     kp = rndGenerateUniformKPND(n,1000,nd)
@@ -152,7 +169,8 @@ def test_kp(n_individuals):
     print ("opt=",opt," lex=", lex, " rev_lex=", rev_lex, " real=", real_greedy, " rnd=", rnd)
 
 
-generate_dataset (n,l,nd,ncoal)
+generate_testset (n,l,nd,100)
+#generate_dataset (n,l,nd,ncoal)
 
 #opttab, advtab, lextab, rndtab, realtab =[],[],[],[],[]
 #for i in range(10):
