@@ -30,15 +30,15 @@ import torch
 #print (kp.greedy(order))
 
 n=1000
-l = 250
+l = 800
 nd=10
 ncoal = 10
 
 def generate_testset (n,l,nd,ncoal):
     individuals = set(range(n))
-    objcoefs = torch.load("objs.pt").tolist()
-    A= torch.load("A.pt").tolist()
-    b= torch.load("b.pt").tolist()
+    objcoefs = torch.load(f"objs-{n}_{nd}_{l}.pt").tolist()
+    A= torch.load(f"A-{n}_{nd}_{l}.pt").tolist()
+    b= torch.load(f"b-{n}_{nd}_{l}.pt").tolist()
     kp = Problem(objcoefs, A, b)
     coals = random_coalitions(individuals, l,ncoal)
     scores,sols = zip(*(list (map (kp.solve_coalition, coals))))
@@ -72,10 +72,10 @@ def generate_dataset (n,l,nd,ncoal):
 
 def adv_test_kpnd(n_individuals, nd):
     individuals = set(range(n_individuals))
-    #kp = rndGenerateUniformKPND(n_individuals,1000, nd)
+    kp = rndGenerateUniformKPND(n_individuals,1000, nd)
     #kp = generateUniformKPND(n_individuals,1000, nd)
     #kp = generateWeaklyCorrelatedKPND(n_individuals,1000, nd)
-    kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
+    #kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
     coals = random_coalitions(individuals, l,ncoal)
     print ("nb_coals=", len(coals))
     scores,sols = zip(*(list (map (kp.solve_coalition, coals))))
@@ -169,25 +169,25 @@ def test_kp(n_individuals):
     print ("opt=",opt," lex=", lex, " rev_lex=", rev_lex, " real=", real_greedy, " rnd=", rnd)
 
 
-generate_dataset (n,l,nd,ncoal)
+#generate_dataset (n,l,nd,ncoal)
 #generate_testset (n,l,nd,100)
 
-#opttab, advtab, lextab, rndtab, realtab =[],[],[],[],[]
-#for i in range(10):
-#    opt,adv_lex, lex, rnd, real = adv_test_kpnd(n, 10)
-#    opttab.append(opt)
-#    advtab.append((adv_lex/opt)*100)
-#    lextab.append((lex/opt)*100)
-#    rndtab.append((rnd/opt)*100)
-#    realtab.append((real/opt)*100)
-#
-#opttab=np.array(opttab)
-#advtab=np.array(advtab)
-#lextab=np.array(lextab)
-#rndtab=np.array(rndtab)
-#realtab = np.array(realtab)
-#
-#print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean(), " real=", realtab.mean())
+opttab, advtab, lextab, rndtab, realtab =[],[],[],[],[]
+for i in range(10):
+    opt,adv_lex, lex, rnd, real = adv_test_kpnd(n, 10)
+    opttab.append(opt)
+    advtab.append((adv_lex/opt)*100)
+    lextab.append((lex/opt)*100)
+    rndtab.append((rnd/opt)*100)
+    realtab.append((real/opt)*100)
+
+opttab=np.array(opttab)
+advtab=np.array(advtab)
+lextab=np.array(lextab)
+rndtab=np.array(rndtab)
+realtab = np.array(realtab)
+
+print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean(), " real=", realtab.mean())
 #
 #
 

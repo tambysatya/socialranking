@@ -104,7 +104,7 @@ class Problem:
         for i in range (len(self.objcoefs)):
             w_i = 1
             for j in range (len (self.A)):
-                w_i *= self.A[j][i]
+                w_i += self.A[j][i]
             
             scores.append(self.objcoefs[i]/w_i)
 
