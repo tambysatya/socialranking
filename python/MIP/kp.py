@@ -3,6 +3,7 @@ from MIP.problem import Problem
 import random
 from operator import itemgetter
 import torch
+import numpy as np
 
 
 # generateCorrelatedKP :: Int -> Int ->  Int -> (Cost -> IO Weight) -> (Costs, Weights, Cmax)
@@ -41,7 +42,6 @@ def kp_greedy (objcoefs, weights):
     return list(order)
 
 def rndGenerateCorrelatedKPND (nbItems, valrange,n, correlation):
-    #from Pisinger D., 2005
     """ random maximal capacity """
 
     #values = list (map (correlation, weights))
@@ -51,8 +51,15 @@ def rndGenerateCorrelatedKPND (nbItems, valrange,n, correlation):
     for i in range(n):
         coefs = list (map (correlation, values))
         weights.append(coefs)
-        bi = random.randint (min(coefs), int(sum(coefs)))
+        #bi = random.randint (int(sum(coefs)/2), int(sum(coefs)))
+        #bi = random.randint (min(coefs), int(sum(coefs)))
+        #bs.append(bi)
+    Acoefs = np.array(weights)
+    for i in range (n):
+        bi = random.randint (Acoefs.max(), int(Acoefs[i].sum()))
         bs.append(bi)
+
+        
     return Problem(values, weights, bs)
 def rndGenerateUniformKPND (nbItems, valrange, nd):
     return rndGenerateCorrelatedKPND (nbItems, valrange, nd, lambda wi: random.randint(1,valrange))

@@ -25,10 +25,12 @@ in pkgs.mkShell {
 	export PYTHONPATH="$PIP_PREFIX/${pkgs.python3.sitePackages}:$PYTHONPATH"
 	export PATH="$PIP_PREFIX/bin:$PATH"
     
-    export CPLEX20=/home/sat/cplex2210
+    #export CPLEX20=/home/sat/cplex2210
+    #export CPLEX20=/home/sat/cplex2210_python/lib/python/cplex
 	unset SOURCE_DATE_EPOCH
 
-	export PYTHONPATH=$PYTHONPATH:${CPLEX20}/cplex/python/${PYTHONVERSION}/${ARCH}:${PYTHONHOME}/lib/python/cplex
+	export PYTHONPATH=$PYTHONPATH:${CPLEX20}
+	#export PYTHONPATH=$PYTHONPATH:${CPLEX20}/cplex/python/${PYTHONVERSION}/${ARCH}:${PYTHONHOME}/lib/python/cplex
 
 
 

@@ -67,24 +67,42 @@ class Problem:
 
         return opt, sol
 
-    def greedy_ (self, order, bs):
-        if order == []:
-            return 0
-        
-        xi = order.pop(0)
-        new_bs = bs.clone()
+    #def greedy_ (self, order, bs):
+    #    if order == []:
+    #        return 0
+    #    
+    #    xi = order.pop(0)
+    #    new_bs = bs.clone()
 
-        for i, (row, bi) in enumerate(zip (self.A, bs)):
-            new_bs[i] = bi - row[xi] 
-            if new_bs[i] < 0: #cannot be added: violates constraint i
-                #print ("cut=" + xi)
-                return self.greedy_(order, bs)
-        ret = self.objcoefs[xi] + self.greedy_(order, new_bs)
-        return ret
-    
+    #    for i, (row, bi) in enumerate(zip (self.A, bs)):
+    #        new_bs[i] = bi - row[xi] 
+    #        if new_bs[i] < 0: #cannot be added: violates constraint i
+    #            #print ("cut=" + xi)
+    #            return self.greedy_(order, bs)
+    #    ret = self.objcoefs[xi] + self.greedy_(order, new_bs)
+    #    return ret
+    #
+    #def greedy (self, order):
+    #    return self.greedy_(order, torch.tensor(self.b))
+
+
     def greedy (self, order):
-        return self.greedy_(order, torch.tensor(self.b))
+        if order == []:
+            return None
+        tmpbs = torch.tensor(self.b).clone()
+        sol = torch.zeros(len(self.objcoefs))
+        coefs = torch.tensor(self.objcoefs)
+        opt = 0
+        ctrs = torch.tensor(self.A).transpose(1,0)
 
+        for i in order:
+            newbs = tmpbs - ctrs[i]
+            if (newbs>=0).all():
+                sol[i] = 1
+                tmpbs = newbs
+                opt += coefs[i]
+        return opt, sol 
+            
     def display (self):
         print ("objs=" + str (self.objcoefs) + "  s.t. " + str(self.A) + " <= " + str(self.b))
     
@@ -111,6 +129,27 @@ class Problem:
         ret = zip (scores, list(range(len(self.objcoefs))))
         ret = sorted(ret, reverse=True)
         return list(map(itemgetter(1),ret))
+
+    def toAdjacencyMatrix (self):
+        nvars = len(self.objcoefs)
+        nctrs = len(self.A)
+
+        #vertices = [vars, ctrs]
+        mat = torch.zeros(nvars+nctrs, nvars+nctrs)
+        atr = torch.tensor(self.A).transpose(0,1)
+        for i in range (nctrs):
+            mat[i]= torch.cat((torch.zeros(nvars),atr[i]))
+
+        # making it symetric
+        mat_tr = mat.clone().transpose(0,1)
+        mat += mat_tr
+
+        #diagonal members
+        for i in range (nctrs):
+            mat[nvars+i][nvars+i] = self.b[i]
+        for i in range (nvars):
+            mat[i][i] = self.objcoefs[i]
+        return mat
             
 def random_coalition (individuals, l):
     inds = list(individuals)
