@@ -12,28 +12,39 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
-n=100
+n=1000
 m=10
 hid=10000
+l = 250
 
-gpu="cuda:0"
+gpu="cuda:1"
 lr=1e-6
-comm = f"{gpu}-sol"
+comm = f"{gpu}-sol-dropout"
 
 class ResidualLinear (nn.Module):
     def __init__(self, in_features, bias=True):
         super (ResidualLinear, self).__init__()
+        self.bn1 = nn.BatchNorm1d(in_features)
+        self.bn2 = nn.BatchNorm1d(in_features)
         self.linear1 = nn.Linear(in_features, in_features, bias=bias)
-        self.bn = nn.BatchNorm1d(in_features)
         self.linear2 = nn.Linear(in_features, in_features, bias=bias)
+
+        self.dropout1 = nn.Dropout()
+        self.dropout2 = nn.Dropout()
+
     def forward (self, data):
         x = data
-        res = self.bn(x)
+        res = self.bn1(x)
+        res = F.relu(res)
         res = self.linear1(res)
+        res = self.dropout1(res)
+
+        res = self.bn2(res)
         res = F.relu(res)
         res = self.linear2(res)
+        res = self.dropout2(res)
         x = x + res
-        x = F.relu(x)
+        #x = F.relu(x)
         return x
 
 class TestNet (nn.Module):
@@ -76,8 +87,9 @@ def plot_grads(model):
 def train_sol(model,epoch, batch_size):
     optimizer = optim.AdamW(model.parameters(), lr=lr)
     writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}")
-    dataset = torch.load("dataset.pt")
-    testset = torch.load("testset.pt")
+    dataset = torch.load(f"dataset-{n}_{m}_{l}.pt")
+    testset = torch.load(f"testset-{n}_{m}_{l}.pt")
+ 
     best = 10^5
    
     print ("loaded")
@@ -122,13 +134,13 @@ def train_sol(model,epoch, batch_size):
             writer.add_scalar("loss/accuracy", accuracy , e)
             if accuracy > best:
                 best = accuracy
-                torch.save(model.state_dict(), "model_sol.pt")
+                torch.save(model.state_dict(), f"model_sol_{n}.pt")
 
 def train_opt(model,epoch, batch_size, lossfun):
     optimizer = optim.AdamW(model.parameters(), lr=lr)
     writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}")
-    dataset = torch.load("dataset.pt")
-    testset = torch.load("testset.pt")
+    dataset = torch.load(f"dataset-{n}_{m}_{l}.pt")
+    testset = torch.load(f"testset-{n}_{m}_{l}.pt")
    
     print ("loaded")
     dataset = DataLoader(dataset, batch_size = batch_size, shuffle=True)
@@ -160,13 +172,13 @@ def train_opt(model,epoch, batch_size, lossfun):
             writer.add_scalar("grad/norm", plot_grads(model), count)
             count += 1
         with torch.no_grad():
-            model.test()
+            model.eval()
             output = model.forward(testinput)
             loss = lossfun(output, testtarget)
             #loss = lossfunction(testtarget, output)
             if loss < best:
                 best = loss
-                torch.save(model.state_dict(), "model_opt.pt")
+                torch.save(model.state_dict(), f"model_opt_{n}.pt")
             writer.add_scalar("loss/test", loss, e)
         
 
@@ -193,14 +205,14 @@ if __name__ == '__main__':
     torch.set_default_dtype(torch.float32)
 
     batchsize = int(sys.argv[2])
-    A = torch.load("A.pt").to(device)
-    objs = torch.load("objs.pt").to(device)
-    b = torch.load("b.pt").to(device)
+    A = torch.load(f"A-{n}_{m}_{l}.pt").to(device)
+    objs = torch.load(f"objs-{n}_{m}_{l}.pt").to(device)
+    b = torch.load(f"b-{n}_{m}_{l}.pt").to(device)
  
     
     print("Training on " + str(device))
     print("before training")
-    model = TestNet(objs/1000,A/1000,b/100000, 100).to(device) # predicts the solution
+    model = TestNet(objs/1000,A/1000,b/(n*1000), n).to(device) # predicts the solution
     train_sol(model,int(sys.argv[1]),int(sys.argv[2]))
     #model = TestNet(objs/1000,A/1000,b/(n*1000), 1).to(device) # predicts the optimal value
     #train_opt(model,int(sys.argv[1]),int(sys.argv[2]),F.mse_loss)
