@@ -138,7 +138,7 @@ class Problem:
         mat = torch.zeros(nvars+nctrs, nvars+nctrs)
         atr = torch.tensor(self.A).transpose(0,1)
         for i in range (nctrs):
-            mat[i]= torch.cat((torch.zeros(nvars),atr[i]))
+            mat[i]= torch.cat((torch.zeros(nvars),atr[i]))/1000
 
         # making it symetric
         mat_tr = mat.clone().transpose(0,1)
