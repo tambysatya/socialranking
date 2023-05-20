@@ -60,6 +60,68 @@ def plot_grads(model):
     total_norm = total_norm ** 0.5
     return total_norm
 
+
+def train_gcn(model,epoch, batch_size, real=False):
+    optimizer = optim.AdamW(model.parameters(), lr=lr)
+    writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}-{real}")
+    adjmat = torch.load(f"adjmat-{n}_{m}_{l}_{datalen}.pt")
+    tgts = None 
+    if real:
+        tgts = torch.load(f"real_tgts-{n}_{m}_{l}_{datalen}.pt")
+    else:
+        tgts = torch.load(f"lex_tgts-{n}_{m}_{l}_{datalen}.pt")
+
+    dataset = torch.load(f"dataset-{n}_{m}_{l}.pt")
+    testset = torch.load(f"testset-{n}_{m}_{l}.pt")
+ 
+    best = 10^5
+   
+    print ("loaded")
+    dataset = DataLoader(dataset, batch_size = batch_size, shuffle=True)
+
+    testinput = testset[:,:n].to(device)
+    #testtarget = testset[:,n:].to(device)
+    #testtarget[:,n] = testtarget[:,n]/100000
+    testtarget = testset[:,n+1:].to(device)
+    
+    count=0
+    for e in range(epoch):
+        for batch in dataset:
+            optimizer.zero_grad()
+            loss = 0
+            x = batch[:,:n]
+
+            #only sol:
+            target = batch[:,n+1:].to(device)
+
+            x = x.to(device)
+            y = model.forward(x)
+
+            loss = F.binary_cross_entropy_with_logits(y, target)
+            loss.backward()
+            optimizer.step() # un pas de la descente de gradient
+
+            writer.add_scalar("loss/train", loss, count)
+            writer.add_scalar("grad/norm", plot_grads(model), count)
+            count += 1
+        with torch.no_grad():
+            output = model.forward(testinput)
+            loss = F.binary_cross_entropy_with_logits(output, testtarget)
+            #loss = lossfunction(testtarget, output)
+            writer.add_scalar("loss/test", loss, e)
+
+            output = torch.sigmoid(output)
+            output[output>0.5]=1
+            output[output<=0.5]=0
+            #print (output[0])
+            accuracy = (n - (output-testtarget).abs().sum(dim=1)).mean()
+            writer.add_scalar("loss/accuracy", accuracy , e)
+            if accuracy > best:
+                best = accuracy
+                torch.save(model.state_dict(), f"model_sol_{n}.pt")
+
+
+
 def train_sol(model,epoch, batch_size):
     optimizer = optim.AdamW(model.parameters(), lr=lr)
     writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}")
