@@ -145,10 +145,10 @@ class Problem:
         mat += mat_tr
 
         #diagonal members
-        for i in range (nctrs):
-            mat[nvars+i][nvars+i] = self.b[i]
-        for i in range (nvars):
-            mat[i][i] = self.objcoefs[i]
+        for i in range (nctrs): #bi
+            mat[nvars+i][nvars+i] = self.b[i]/(nvars*1000)
+        for i in range (nvars): #cis
+            mat[i][i] = self.objcoefs[i]/1000
         return mat
             
 def random_coalition (individuals, l):
