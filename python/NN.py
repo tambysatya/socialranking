@@ -15,10 +15,10 @@ from torch.utils.data import DataLoader
 from NN.blocks import ResidualLinear, GraphConvolution
 from NN.dataset import KPDataset
 
-n=1000
+n=100
 m=10
 hid=10000
-l = 250
+l = 50
 
 datalen=100#test
 testlen=100
@@ -28,29 +28,26 @@ lr=1e-6
 comm = f"{gpu}-gcn"
 
 class TestNet (nn.Module):
-    def __init__ (self, objs, A, b, outputsize): 
+    def __init__ (self, n, m)
         super (TestNet, self).__init__()
-        
 
-        self.instance = torch.cat((objs,A.reshape(n*m),b))
-        in_features = n+n*m+m+n
-        self.linear1 = nn.Linear(n+n*m+m+n,hid, bias=True) #f(x) = ax+b
-        self.b1 = ResidualLinear(hid)
-        self.b2 = ResidualLinear(hid)
-        self.linear2 = nn.Linear(hid,outputsize, bias = True)
-        #self.linear2 = nn.Linear(hid,n+1, bias = True)
-
+        self.initial_fts = torch.cat((torch.ones(n), torch.zeros(m))).reshape(1,n+m,1)
+        self.gcninit = GCNLinear(1, 50)
+        self.gcnhid1 = GCNResnetLinear(50)
+        self.gcnhid2 = GCNResnetLinear(50)
+        self.gcnlast = GCNLinear(50,1)
 
 
     def forward (self, x):
         self.train()
         bsize = x.size()[0]
-        inputs = torch.cat((self.instance.repeat(bsize,1),x), dim=1)
-        x = self.linear1(inputs)
+        inputs = self.initial_fts.repeat(bsize,1,1)
+        inputs = torch.cat((x,inputs))
+        x = self.gcninit1((inputs,x))
         x = F.relu(x)
-        x = self.b1(x)
-        x = self.b2(x)
-        y = self.linear2(x)
+        x = self.gcinhid1(x)
+        x = self.gcnhid2(x)
+        y = self.gcnlast(x)
         return y
 
 
@@ -144,7 +141,7 @@ if __name__ == '__main__':
     
     print("Training on " + str(device))
     print("before training")
-    model = TestNet(objs/1000,A/1000,b/(n*1000), n).to(device) # predicts the solution
+    model = TestNet(n,m).to(device) # predicts the solution
     train_sol(model,int(sys.argv[1]),int(sys.argv[2]))
     #model = TestNet(objs/1000,A/1000,b/(n*1000), 1).to(device) # predicts the optimal value
     #train_opt(model,int(sys.argv[1]),int(sys.argv[2]),F.mse_loss)
