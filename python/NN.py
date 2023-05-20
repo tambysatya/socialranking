@@ -12,6 +12,8 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
+from NN.blocks import ResidualLinear, GraphConvolution
+
 n=1000
 m=10
 hid=10000
@@ -20,32 +22,6 @@ l = 250
 gpu="cuda:1"
 lr=1e-6
 comm = f"{gpu}-sol-dropout"
-
-class ResidualLinear (nn.Module):
-    def __init__(self, in_features, bias=True):
-        super (ResidualLinear, self).__init__()
-        self.bn1 = nn.BatchNorm1d(in_features)
-        self.bn2 = nn.BatchNorm1d(in_features)
-        self.linear1 = nn.Linear(in_features, in_features, bias=bias)
-        self.linear2 = nn.Linear(in_features, in_features, bias=bias)
-
-        self.dropout1 = nn.Dropout()
-        self.dropout2 = nn.Dropout()
-
-    def forward (self, data):
-        x = data
-        res = self.bn1(x)
-        res = F.relu(res)
-        res = self.linear1(res)
-        res = self.dropout1(res)
-
-        res = self.bn2(res)
-        res = F.relu(res)
-        res = self.linear2(res)
-        res = self.dropout2(res)
-        x = x + res
-        #x = F.relu(x)
-        return x
 
 class TestNet (nn.Module):
     def __init__ (self, objs, A, b, outputsize): 
