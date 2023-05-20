@@ -13,15 +13,19 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
 from NN.blocks import ResidualLinear, GraphConvolution
+from NN.dataset import KPDataset
 
 n=1000
 m=10
 hid=10000
 l = 250
 
+datalen=100#test
+testlen=100
+
 gpu="cuda:1"
 lr=1e-6
-comm = f"{gpu}-sol-dropout"
+comm = f"{gpu}-gcn"
 
 class TestNet (nn.Module):
     def __init__ (self, objs, A, b, outputsize): 
@@ -64,40 +68,27 @@ def plot_grads(model):
 def train_gcn(model,epoch, batch_size, real=False):
     optimizer = optim.AdamW(model.parameters(), lr=lr)
     writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}-{real}")
-    adjmat = torch.load(f"adjmat-{n}_{m}_{l}_{datalen}.pt")
-    tgts = None 
-    if real:
-        tgts = torch.load(f"real_tgts-{n}_{m}_{l}_{datalen}.pt")
-    else:
-        tgts = torch.load(f"lex_tgts-{n}_{m}_{l}_{datalen}.pt")
-
-    dataset = torch.load(f"dataset-{n}_{m}_{l}.pt")
-    testset = torch.load(f"testset-{n}_{m}_{l}.pt")
- 
+    trainset = KPDataset(n,m,l,datalen,real)
+    testset = KPDataset(n,m,l,testlen,real)
     best = 10^5
    
     print ("loaded")
-    dataset = DataLoader(dataset, batch_size = batch_size, shuffle=True)
-
-    testinput = testset[:,:n].to(device)
-    #testtarget = testset[:,n:].to(device)
-    #testtarget[:,n] = testtarget[:,n]/100000
-    testtarget = testset[:,n+1:].to(device)
-    
+    trainset = DataLoader(trainset, batch_size = batch_size, shuffle=True)
+    testset = DataLoader(testset, batch_size = testlen, shuffle=True)
     count=0
     for e in range(epoch):
         for batch in dataset:
             optimizer.zero_grad()
             loss = 0
-            x = batch[:,:n]
 
-            #only sol:
-            target = batch[:,n+1:].to(device)
+            x, f_x = batch
 
             x = x.to(device)
+            f_x = f_x.to(device)
+
             y = model.forward(x)
 
-            loss = F.binary_cross_entropy_with_logits(y, target)
+            loss = F.binary_cross_entropy_with_logits(y, f_x)
             loss.backward()
             optimizer.step() # un pas de la descente de gradient
 
@@ -105,120 +96,23 @@ def train_gcn(model,epoch, batch_size, real=False):
             writer.add_scalar("grad/norm", plot_grads(model), count)
             count += 1
         with torch.no_grad():
-            output = model.forward(testinput)
-            loss = F.binary_cross_entropy_with_logits(output, testtarget)
-            #loss = lossfunction(testtarget, output)
-            writer.add_scalar("loss/test", loss, e)
+            for batch in testset:
+                x, f_x = batch
+                output = model.forward(x)
+                loss = F.binary_cross_entropy_with_logits(output, f_x)
+                #loss = lossfunction(testtarget, output)
+                writer.add_scalar("loss/test", loss, e)
 
-            output = torch.sigmoid(output)
-            output[output>0.5]=1
-            output[output<=0.5]=0
-            #print (output[0])
-            accuracy = (n - (output-testtarget).abs().sum(dim=1)).mean()
-            writer.add_scalar("loss/accuracy", accuracy , e)
-            if accuracy > best:
-                best = accuracy
-                torch.save(model.state_dict(), f"model_sol_{n}.pt")
+                output = torch.sigmoid(output)
+                output[output>0.5]=1
+                output[output<=0.5]=0
+                #print (output[0])
+                accuracy = (n - (output-f_x).abs().sum(dim=1)).mean()
+                writer.add_scalar("loss/accuracy", accuracy , e)
+                if accuracy > best:
+                    best = accuracy
+                    torch.save(model.state_dict(), f"model_sol_{n}.pt")
 
-
-
-def train_sol(model,epoch, batch_size):
-    optimizer = optim.AdamW(model.parameters(), lr=lr)
-    writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}")
-    dataset = torch.load(f"dataset-{n}_{m}_{l}.pt")
-    testset = torch.load(f"testset-{n}_{m}_{l}.pt")
- 
-    best = 10^5
-   
-    print ("loaded")
-    dataset = DataLoader(dataset, batch_size = batch_size, shuffle=True)
-
-    testinput = testset[:,:n].to(device)
-    #testtarget = testset[:,n:].to(device)
-    #testtarget[:,n] = testtarget[:,n]/100000
-    testtarget = testset[:,n+1:].to(device)
-    
-    count=0
-    for e in range(epoch):
-        for batch in dataset:
-            optimizer.zero_grad()
-            loss = 0
-            x = batch[:,:n]
-
-            #only sol:
-            target = batch[:,n+1:].to(device)
-
-            x = x.to(device)
-            y = model.forward(x)
-
-            loss = F.binary_cross_entropy_with_logits(y, target)
-            loss.backward()
-            optimizer.step() # un pas de la descente de gradient
-
-            writer.add_scalar("loss/train", loss, count)
-            writer.add_scalar("grad/norm", plot_grads(model), count)
-            count += 1
-        with torch.no_grad():
-            output = model.forward(testinput)
-            loss = F.binary_cross_entropy_with_logits(output, testtarget)
-            #loss = lossfunction(testtarget, output)
-            writer.add_scalar("loss/test", loss, e)
-
-            output = torch.sigmoid(output)
-            output[output>0.5]=1
-            output[output<=0.5]=0
-            #print (output[0])
-            accuracy = (n - (output-testtarget).abs().sum(dim=1)).mean()
-            writer.add_scalar("loss/accuracy", accuracy , e)
-            if accuracy > best:
-                best = accuracy
-                torch.save(model.state_dict(), f"model_sol_{n}.pt")
-
-def train_opt(model,epoch, batch_size, lossfun):
-    optimizer = optim.AdamW(model.parameters(), lr=lr)
-    writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}")
-    dataset = torch.load(f"dataset-{n}_{m}_{l}.pt")
-    testset = torch.load(f"testset-{n}_{m}_{l}.pt")
-   
-    print ("loaded")
-    dataset = DataLoader(dataset, batch_size = batch_size, shuffle=True)
-
-    testinput = testset[:,:n].to(device)
-    testtarget = testset[:,n].to(device).reshape(-1,1)
-
-    best = 1e-7
-    
-    count=0
-    for e in range(epoch):
-        model.train()
-        for batch in dataset:
-            optimizer.zero_grad()
-            loss = 0
-            x = batch[:,:n]
-
-            #only opt:
-            target = batch[:,n].to(device).reshape(-1,1)
-
-            x = x.to(device)
-            y = model.forward(x)
-
-            loss = lossfun(y, target)
-            loss.backward()
-            optimizer.step() # un pas de la descente de gradient
-
-            writer.add_scalar("loss/train", loss, count)
-            writer.add_scalar("grad/norm", plot_grads(model), count)
-            count += 1
-        with torch.no_grad():
-            model.eval()
-            output = model.forward(testinput)
-            loss = lossfun(output, testtarget)
-            #loss = lossfunction(testtarget, output)
-            if loss < best:
-                best = loss
-                torch.save(model.state_dict(), f"model_opt_{n}.pt")
-            writer.add_scalar("loss/test", loss, e)
-        
 
 
 def show_params(model):

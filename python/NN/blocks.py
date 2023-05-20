@@ -1,4 +1,5 @@
 import torch
+import math
 #import tensorflow as tf
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,12 +14,11 @@ from torch.utils.data import DataLoader
 torch.set_default_dtype(torch.float32)
 
 
-class GraphConvolution(Module):
+class GraphConvolution(nn.Module):
 #code from https://github.com/tkipf/pygcn
     """
     Simple GCN layer, similar to https://arxiv.org/abs/1609.02907
     """
-
     def __init__(self, in_features, out_features, bias=True):
         super(GraphConvolution, self).__init__()
         self.in_features = in_features
@@ -77,5 +77,35 @@ class ResidualLinear (nn.Module):
         x = x + res
         #x = F.relu(x)
         return x
+
+class GCNLinear (nn.Module):
+    def __init__(self, in_features, out_features, bias=True):
+        super (GCNLinear, self).__init__()
+        self.gcn = GraphConvolution (in_features, out_features, bias)
+        self.linear = nn.Linear (out_features, out_features, bias)
+    def forward (self, data):
+        x, adj = self.gcn(data)
+        out = self.linear(x)
+        return out, adj
+
+class GCNResnetLinear (nn.Module):
+    def __init__(self, n_features, bias=True):
+        super (GCNResnetLinear, self).__init__()
+        self.ln1 = nn.LayerNorm (n_features)
+        self.gcn_lin1 = GCNLinear (n_features, n_features, bias)
+
+        self.ln2 = nn.LayerNorm (n_features)
+        self.gcn_lin2 = GCNLinear (n_features, n_features, bias)
+    def forward (self, data):
+        x, adj = data
+        x = self.ln1(x)
+        x, _ = self.gcn_lin1((x,adj))
+        x = F.relu(x)
+        x = self.ln2 (x)
+        x, _ = self.gcn_lin2((x,adj))
+        x = F.relu(x)
+        return (x+data[0], adj)
+
+
 
 
