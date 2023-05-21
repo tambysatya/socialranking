@@ -30,7 +30,7 @@ from tqdm import tqdm
 #print (kp.display())
 #print (kp.greedy(order))
 
-datalen = 100 #nb datas generated
+datalen = 10000 #nb datas generated
 n=100
 l = 50
 nd=10
