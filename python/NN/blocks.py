@@ -106,6 +106,25 @@ class GCNResnetLinear (nn.Module):
         x = F.relu(x)
         return (x+data[0], adj)
 
+class GCNResidual (nn.Module):
+    def __init__(self, n_features, bias=True):
+        super (GCNResidual, self).__init__()
+        self.ln1 = nn.LayerNorm (n_features)
+        self.gcn1 = GraphConvolution(n_features, n_features, bias)
+        self.ln2 = nn.LayerNorm (n_features)
+        self.gcn2 = GraphConvolution(n_features, n_features, bias)
+    
+    def forward (self, data):
+        x, adj = data
+        x = self.ln1(x)
+        x,_ = self.gcn1((x,adj))
+        x = F.relu(x)
+        x = self.ln2(x)
+        x, _ = self.gcn2((x,adj))
+        x = F.relu(x)
+        return (x+data[0], adj)
+
+    
 
 
 
