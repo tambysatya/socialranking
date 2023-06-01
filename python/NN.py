@@ -15,21 +15,22 @@ from torch.utils.data import DataLoader
 from NN.blocks import ResidualLinear, GraphConvolution, GCNLinear, GCNResnetLinear, GCNResidual
 from NN.dataset import KPDataset
 
-n=100
+n=50
 m=10
 hid=10000
-l = 50
+l = 25
 real = False
 plot_hid_grad = False
 save = True
 
-datalen=10000
+datalen=100000
 testlen=100
 
 
-gpu="cuda:1"
-lr=1e-6
-comm = f"{gpu}-gcn_nolin"
+gpu="cuda:0"
+lr=1e-5
+#lr=1e-6
+comm = f"{gpu}-gcn_nolin-dropout-mlp-adamW"
 use_cuda = torch.cuda.is_available()
 
 #device = torch.device("cuda:1" if use_cuda else "cpu")
@@ -55,8 +56,13 @@ class TestNet (nn.Module):
         #self.gcnhid2 = GCNResnetLinear(hid)
         self.gcnhid1 = GCNResidual(hid)
         self.gcnhid2 = GCNResidual(hid)
-        #self.gcnlast = nn.Linear(hid*(n+m), 100)
-        self.gcnlast = GCNLinear(hid,n)
+        self.drop1 = nn.Dropout()
+        self.gcnhid3 = GCNResidual(hid)
+        self.gcnhid4 = GCNResidual(hid)
+        self.drop2 = nn.Dropout()
+        self.gcnlast = nn.Linear(hid*(n+m), n)
+        #self.gcnlast = GCNLinear(hid,n)
+        #self.linlast = nn.Linear(n,n)
 
 
     def forward (self, x):
@@ -65,17 +71,24 @@ class TestNet (nn.Module):
         inputs = self.initial_fts.repeat(bsize,1,1)
         initx, adjs = self.gcninit((inputs,x))
         initx = F.relu(initx)
-        x = self.gcnhid1((initx,adjs))
-        x = self.gcnhid2(x)
+        x,_ = self.gcnhid1((initx,adjs))
+        x,_ = self.gcnhid2((x,adjs))
+        x = self.drop1(x)
+        x, _ = self.gcnhid3((x,adjs))
+        x, _ = self.gcnhid4((x,adjs))
+        x = self.drop2(x)
         ##### return avec mlp 
-        #y = self.gcnlast(x[0].reshape(bsize, hid*(self.n+self.m)))
-        #return y
-        y,_ = self.gcnlast(x) #return avec gcnlinear
+        y = self.gcnlast(x.reshape(bsize, hid*(self.n+self.m)))
+        return y
+        #y,_ = self.gcnlast(x) #return avec gcnlinear
 
 
 
         #return y[:,:n].reshape(bsize,n) #classic gcn
-        return y.sum(dim=1)/y.size(1)
+        #maxvals, maxids = y.max(dim=1)
+        #y = self.linlast(maxvals)
+        #return y
+        #return y.sum(dim=1)/y.size(1)
 
 
    
@@ -89,9 +102,22 @@ def gradient_norm(model):
     return total_norm
 
 
+def compute_accuracy(output, target):
+    ks = target.sum(dim=-1)
+    total = torch.tensor(0).float().to(device)
+    for i, k in enumerate(ks):
+        _, top_k = output[i].topk(int(k.item()))
+        selected = target[i][top_k].sum() / target[i].sum()
+        total += selected
+    return total / target.size(0)  
+        
+    #_,kbest=output.topk(, dim=-1)
+    #return target.gather(-1, kbest).sum(dim=1).mean()
+
+    
 def train_gcn(model,epoch, batch_size, real=False):
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-    #optimizer = optim.AdamW(model.parameters(), lr=lr)
+    #optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.AdamW(model.parameters(), lr=lr)
     writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}-{real}")
     trainset = KPDataset(n,m,l,datalen,real)
     testset = KPDataset(n,m,l,testlen,real)
@@ -138,16 +164,18 @@ def train_gcn(model,epoch, batch_size, real=False):
                 #loss = lossfunction(testtarget, output)
                 writer.add_scalar("loss/test", loss, e)
 
-                output = torch.sigmoid(output)
-                output[output>0.5]=1
-                output[output<=0.5]=0
+                accuracy = compute_accuracy(output, f_x)
+
+                #output = torch.sigmoid(output)
+                #output[output>0.5]=1
+                #output[output<=0.5]=0
                 #print (output[0])
-                accuracy = (n - (output-f_x).abs().sum(dim=1)).mean()
+                #accuracy = (n - (output-f_x).abs().sum(dim=1)).mean()
                 writer.add_scalar("loss/accuracy", accuracy , e)
                 if accuracy > best:
                     best = accuracy
                     if save:
-                        torch.save(model.state_dict(), f"model_sol_{n}-{real}.pt")
+                        torch.save(model.state_dict(), f"model_sol_{n}-{datalen}-{real}-{comm}.pt")
 
 
 
