@@ -33,7 +33,7 @@ real = False
 plot_hid_grad = False
 save = True
 
-datalen=100 #200000
+datalen=200000
 testlen=100
 
 
