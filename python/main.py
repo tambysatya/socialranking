@@ -248,5 +248,6 @@ def test():
     print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean(), " real=", realtab.mean())
 
 
-generate_gcn_dataset()
+if __name__ == '__main__':
+    generate_gcn_dataset()
 #test()

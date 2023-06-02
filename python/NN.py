@@ -1,6 +1,12 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from MIP.kp import generateUniformKPND, generateWeaklyCorrelatedKPND, generateStronglyCorrelatedKPND, kp_greedy
+from MIP.kp import rndGenerateUniformKPND
+from MIP.problem import random_coalitions, Problem
+from lexcell import lex_cell, adv_lex_cell
+from tqdm import tqdm
+
 import sys,os,math,subprocess
 import torch
 #import tensorflow as tf
@@ -12,6 +18,8 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
+from operator import itemgetter
+
 from NN.blocks import ResidualLinear, GraphConvolution, GCNLinear, GCNResnetLinear, GCNResidual
 from NN.dataset import KPDataset
 
@@ -20,11 +28,12 @@ m=10
 hid=1000
 nbhid=20
 l = 25
+ncoal=100
 real = False
 plot_hid_grad = False
 save = True
 
-datalen=200000
+datalen=100 #200000
 testlen=100
 
 
@@ -42,6 +51,64 @@ if use_cuda:
 else:
     device = torch.device("cpu")
 
+def generate_mats (n,l,nd,ncoal):
+    individuals = set(range(n))
+    kp = rndGenerateUniformKPND(n,1000,nd)
+    mat = kp.toAdjacencyMatrix()
+    coals = random_coalitions(individuals, l,ncoal)
+    scores,sols = zip(*(list (map (kp.solve_coalition, coals))))
+
+    order = adv_lex_cell(individuals, list(zip(sols,coals)), scores)
+
+    opt,real_sol = kp.solve()
+
+    adv_lex_greed, lex_sol = kp.greedy(order)
+
+    real_order = kp.trivial_order()
+    real_greed, _ =kp.greedy(real_order)
+
+
+    return kp, mat, lex_sol, torch.tensor(real_sol), adv_lex_greed, real_greed, opt
+ 
+def generate_validset():
+    kps = []
+    mats = []
+    tgts_sols = []
+    tgts_opts = []
+
+
+    for i in tqdm(range(100)):
+    #for i in tqdm(range(testlen)):
+        kp, mat, lex_sol, real_sol, lex_opt, _, real_opt = generate_mats(n,l,m,ncoal)
+        kps.append(kp)
+        mats.append(mat)
+        if real:
+            tgts_sols.append(real_sol)
+            tgts_opt.append(real_opt)
+        else:
+            tgts_sols.append(lex_sol)
+            tgts_opts.append(lex_opt)
+    return kps, torch.stack(mats), tgts_sols, tgts_opts    
+
+def evaluate_accuracy(model, kps, mats, tgts_sols, tgts_opts):
+    mats = mats.to(device)
+
+    f_xs = model(mats).cpu()
+
+    sol_accuracy, opt_accuracy = [],[]
+
+    for kp, pred, tgt_sol, tgt_opt in zip (kps, f_xs, tgts_sols, tgts_opts):
+        order = map (itemgetter(1),sorted(zip(pred, range(n)), reverse=True))
+        opt, sol = kp.greedy(order)
+        sol = sol.type(torch.int64)
+        opt_acc = opt/tgt_opt
+        sol_acc = tgt_sol.gather(0,sol).sum()/tgt_sol.sum()
+        opt_accuracy.append(opt_acc)
+        sol_accuracy.append(sol_acc)
+        
+    sol_accuracy = torch.tensor(sol_accuracy)
+    opt_accuracy = torch.tensor(opt_accuracy)
+    return sol_accuracy.mean(), opt_accuracy.mean()
 
 
 class TestNet (nn.Module):
@@ -145,6 +212,10 @@ def train_gcn(model,epoch, batch_size, real=False):
     print ("loaded")
     trainset = DataLoader(trainset, batch_size = batch_size, shuffle=True)
     testset = DataLoader(testset, batch_size = testlen, shuffle=True)
+
+    print ("generate validation_set")
+    val_kps, val_mats, val_sols, val_opts = generate_validset() 
+
     count=0
     for e in range(epoch):
         for batch in trainset:
@@ -184,6 +255,7 @@ def train_gcn(model,epoch, batch_size, real=False):
                 writer.add_scalar("loss/test", loss, e)
 
                 accuracy = compute_accuracy(output, f_x)
+                sol_acc, opt_acc = evaluate_accuracy(model,val_kps, val_mats, val_sols, val_opts)
 
                 #output = torch.sigmoid(output)
                 #output[output>0.5]=1
@@ -191,6 +263,8 @@ def train_gcn(model,epoch, batch_size, real=False):
                 #print (output[0])
                 #accuracy = (n - (output-f_x).abs().sum(dim=1)).mean()
                 writer.add_scalar("loss/accuracy", accuracy , e)
+                writer.add_scalar("accuracy/sol", sol_acc, e)
+                writer.add_scalar("accuracy/opt", opt_acc, e)
                 if accuracy > best:
                     best = accuracy
                     if save:
