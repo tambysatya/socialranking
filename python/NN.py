@@ -17,20 +17,21 @@ from NN.dataset import KPDataset
 
 n=50
 m=10
-hid=10000
+hid=1000
+nbhid=20
 l = 25
 real = False
 plot_hid_grad = False
 save = True
 
-datalen=100000
+datalen=200000
 testlen=100
 
 
 gpu="cuda:0"
-lr=1e-5
+lr=5e-5
 #lr=1e-6
-comm = f"{gpu}-gcn_nolin-dropout-mlp-adamW"
+comm = f"{gpu}-gcn_nolin-dropout-mlp-adamW-{nbhid}*{hid}-{datalen}"
 use_cuda = torch.cuda.is_available()
 
 #device = torch.device("cuda:1" if use_cuda else "cpu")
@@ -52,15 +53,22 @@ class TestNet (nn.Module):
 
         self.initial_fts = torch.cat((torch.ones(n), torch.zeros(m))).reshape(1,n+m,1).to(device)
         self.gcninit = GCNLinear(1, hid)
+
+        mlist = []
+        for i in range(nbhid):
+            mlist.append(GCNResidual(hid))
+        self.hid = nn.Sequential(*mlist)
+        self.last = nn.Linear(hid*(n+m),n)
+
         #self.gcnhid1 = GCNResnetLinear(hid)
         #self.gcnhid2 = GCNResnetLinear(hid)
-        self.gcnhid1 = GCNResidual(hid)
-        self.gcnhid2 = GCNResidual(hid)
-        self.drop1 = nn.Dropout()
-        self.gcnhid3 = GCNResidual(hid)
-        self.gcnhid4 = GCNResidual(hid)
-        self.drop2 = nn.Dropout()
-        self.gcnlast = nn.Linear(hid*(n+m), n)
+        #self.gcnhid1 = GCNResidual(hid)
+        #self.gcnhid2 = GCNResidual(hid)
+        #self.drop1 = nn.Dropout()
+        #self.gcnhid3 = GCNResidual(hid)
+        #self.gcnhid4 = GCNResidual(hid)
+        #self.drop2 = nn.Dropout()
+        #self.gcnlast = nn.Linear(hid*(n+m), n)
         #self.gcnlast = GCNLinear(hid,n)
         #self.linlast = nn.Linear(n,n)
 
@@ -71,14 +79,19 @@ class TestNet (nn.Module):
         inputs = self.initial_fts.repeat(bsize,1,1)
         initx, adjs = self.gcninit((inputs,x))
         initx = F.relu(initx)
-        x,_ = self.gcnhid1((initx,adjs))
-        x,_ = self.gcnhid2((x,adjs))
-        x = self.drop1(x)
-        x, _ = self.gcnhid3((x,adjs))
-        x, _ = self.gcnhid4((x,adjs))
-        x = self.drop2(x)
-        ##### return avec mlp 
-        y = self.gcnlast(x.reshape(bsize, hid*(self.n+self.m)))
+        
+        x, _ = self.hid((initx,adjs))
+        y = self.last(x.reshape(bsize,hid*(self.n+self.m)))
+        return y
+
+        #x,_ = self.gcnhid1((initx,adjs))
+        #x,_ = self.gcnhid2((x,adjs))
+        #x = self.drop1(x)
+        #x, _ = self.gcnhid3((x,adjs))
+        #x, _ = self.gcnhid4((x,adjs))
+        #x = self.drop2(x)
+        ###### return avec mlp 
+        #y = self.gcnlast(x.reshape(bsize, hid*(self.n+self.m)))
         return y
         #y,_ = self.gcnlast(x) #return avec gcnlinear
 
@@ -119,7 +132,13 @@ def train_gcn(model,epoch, batch_size, real=False):
     #optimizer = optim.Adam(model.parameters(), lr=lr)
     optimizer = optim.AdamW(model.parameters(), lr=lr)
     writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}-{real}")
-    trainset = KPDataset(n,m,l,datalen,real)
+
+    trainset=None
+    if datalen == 200000:
+        print ("loading large dataset")
+        trainset=torch.load("dataset_50_10_25_200000.pt")
+    else:
+        trainset = KPDataset(n,m,l,datalen,real)
     testset = KPDataset(n,m,l,testlen,real)
     best = 10^5
    
