@@ -29,7 +29,7 @@ hid=1000
 nbhid=20
 l = 25
 ncoal=100
-real = False
+real = True
 plot_hid_grad = False
 save = True
 
@@ -37,7 +37,7 @@ datalen=200000
 testlen=100
 
 
-gpu="cuda:0"
+gpu="cuda:1"
 lr=5e-5
 #lr=1e-6
 comm = f"{gpu}-gcn_nolin-dropout-mlp-adamW-{nbhid}*{hid}-{datalen}"
@@ -84,7 +84,7 @@ def generate_validset():
         mats.append(mat)
         if real:
             tgts_sols.append(real_sol)
-            tgts_opt.append(real_opt)
+            tgts_opts.append(real_opt)
         else:
             tgts_sols.append(lex_sol)
             tgts_opts.append(lex_opt)
