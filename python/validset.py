@@ -79,9 +79,9 @@ def generate_validset(n, l, m, ncoal):
 
 class KPValidSet(Dataset):
     def __init__(self, cs, As, bs, mats, sols, tgts):
-        self.mats = mats
-        self.sols = sols
-        self.opts = tgts
+        self.mats = torch.stack(mats)
+        self.sols = torch.stack(sols)
+        self.opts = torch.tensor(tgts)
 
         self.cs = cs
         self.As = As
@@ -90,7 +90,7 @@ class KPValidSet(Dataset):
     def __len__(self):
         return self.mats.size(0)
     def __getitem__(self, idx):
-        pb = Problem(list(self.cs[idx]), list(self.As[idx]), list (self.bs[idx]))
+        pb = Problem(self.cs[idx].tolist(), self.As[idx].tolist(), self.bs[idx].tolist())
         return pb, self.mats[idx], self.sols[idx], self.opts[idx]
 
 def load_validset(n,l,m,ncoal,real):

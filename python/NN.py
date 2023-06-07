@@ -7,6 +7,8 @@ from MIP.problem import random_coalitions, Problem
 from lexcell import lex_cell, adv_lex_cell
 from tqdm import tqdm
 
+from validset import load_validset
+
 import sys,os,math,subprocess
 import torch
 #import tensorflow as tf
@@ -25,7 +27,7 @@ from NN.dataset import KPDataset
 
 n=50
 m=10
-hid=1000
+hid=2000
 nbhid=20
 l = 25
 ncoal=100
@@ -33,12 +35,12 @@ real = True
 plot_hid_grad = False
 save = True
 
-datalen=200000
+datalen=300000
 testlen=100
 
 
 gpu="cuda:1"
-lr=5e-5
+lr=1e-5
 #lr=1e-6
 comm = f"{gpu}-gcn_nolin-dropout-mlp-adamW-{nbhid}*{hid}-{datalen}"
 use_cuda = torch.cuda.is_available()
@@ -90,19 +92,21 @@ def generate_validset():
             tgts_opts.append(lex_opt)
     return kps, torch.stack(mats), tgts_sols, tgts_opts    
 
-def evaluate_accuracy(model, kps, mats, tgts_sols, tgts_opts):
-    mats = mats.to(device)
+def evaluate_accuracy(model,validset):
 
-    f_xs = model(mats).cpu()
 
     sol_accuracy, opt_accuracy = [],[]
 
-    for kp, pred, tgt_sol, tgt_opt in zip (kps, f_xs, tgts_sols, tgts_opts):
-        order = map (itemgetter(1),sorted(zip(pred, range(n)), reverse=True))
+    for entry in validset:
+        kp, mat, tgt_sol, tgt_opt = entry
+        pred = model(torch.stack([mat]).to(device)).cpu()
+
+        order = map (itemgetter(1),sorted(zip(pred[0], range(n)), reverse=True))
         opt, sol = kp.greedy(order)
         sol = sol.type(torch.int64)
         opt_acc = opt/tgt_opt
-        sol_acc = tgt_sol.gather(0,sol).sum()/tgt_sol.sum()
+        #sol_acc = tgt_sol.gather(0,sol).sum()/tgt_sol.sum()
+        sol_acc = tgt_sol[sol==1].sum()/tgt_sol.sum()
         opt_accuracy.append(opt_acc)
         sol_accuracy.append(sol_acc)
         
@@ -201,9 +205,13 @@ def train_gcn(model,epoch, batch_size, real=False):
     writer = SummaryWriter(comment=f"n-100_p-10_rnd-{comm}-{real}")
 
     trainset=None
-    if datalen == 200000:
+    if datalen == 300000:
         print ("loading large dataset")
-        trainset=torch.load("dataset_50_10_25_200000.pt")
+        if real:
+            trainset=torch.load("dataset_50_10_25_300000_real.pt")
+        else:
+            trainset=torch.load("dataset_50_10_25_300000.pt")
+            
     else:
         trainset = KPDataset(n,m,l,datalen,real)
     testset = KPDataset(n,m,l,testlen,real)
@@ -213,16 +221,20 @@ def train_gcn(model,epoch, batch_size, real=False):
     trainset = DataLoader(trainset, batch_size = batch_size, shuffle=True)
     testset = DataLoader(testset, batch_size = testlen, shuffle=True)
 
-    print ("generate validation_set")
-    val_kps, val_mats, val_sols, val_opts = generate_validset() 
+    print ("load validation_set")
+    validset = load_validset(n,l,m,ncoal,real)
 
     count=0
     for e in range(epoch):
         for batch in trainset:
+        #for batch in validset:
             optimizer.zero_grad()
             loss = 0
 
             x, f_x = batch
+            #_, x,f_x, _ = batch
+            #x = torch.stack([x])
+            #f_x = torch.stack([f_x])
 
             x = x.to(device)
             f_x = f_x.to(device)
@@ -245,6 +257,10 @@ def train_gcn(model,epoch, batch_size, real=False):
                 #     writer.add_scalar(f'hid/hid-{i}', gradient_norm(layer), count)
 
         with torch.no_grad():
+            sol_acc, opt_acc = evaluate_accuracy(model,validset)
+            writer.add_scalar("accuracy/sol", sol_acc, e)
+            writer.add_scalar("accuracy/opt", opt_acc, e)
+
             for batch in testset:
                 x, f_x = batch
                 x = x.to(device)
@@ -255,7 +271,6 @@ def train_gcn(model,epoch, batch_size, real=False):
                 writer.add_scalar("loss/test", loss, e)
 
                 accuracy = compute_accuracy(output, f_x)
-                sol_acc, opt_acc = evaluate_accuracy(model,val_kps, val_mats, val_sols, val_opts)
 
                 #output = torch.sigmoid(output)
                 #output[output>0.5]=1
@@ -263,8 +278,7 @@ def train_gcn(model,epoch, batch_size, real=False):
                 #print (output[0])
                 #accuracy = (n - (output-f_x).abs().sum(dim=1)).mean()
                 writer.add_scalar("loss/accuracy", accuracy , e)
-                writer.add_scalar("accuracy/sol", sol_acc, e)
-                writer.add_scalar("accuracy/opt", opt_acc, e)
+
                 if accuracy > best:
                     best = accuracy
                     if save:
