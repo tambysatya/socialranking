@@ -8,6 +8,7 @@ import random
 import numpy as np
 import torch
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 #f= [1,2]
 #A = [[2,3],[2,5]]
@@ -30,11 +31,13 @@ from tqdm import tqdm
 #print (kp.display())
 #print (kp.greedy(order))
 
-datalen = 100000 #nb datas generated
-n=50
-l = 25
-nd=10
-ncoal = 100
+if __name__ == '__main__':
+    datalen = 100000 #nb datas generated
+    n=50
+    l = 25
+    nd=10
+    ncoal = 100
+
 
 
 def generate_mats (n,l,nd,ncoal):
@@ -127,7 +130,7 @@ def generate_dataset (n,l,nd,ncoal):
     
     
 
-def adv_test_kpnd(n_individuals, nd):
+def adv_test_kpnd(n_individuals,l, ncoal, nd):
     individuals = set(range(n_individuals))
     kp = rndGenerateUniformKPND(n_individuals,1000, nd)
     #kp = generateUniformKPND(n_individuals,1000, nd)
@@ -140,30 +143,30 @@ def adv_test_kpnd(n_individuals, nd):
     order = adv_lex_cell(individuals, list(zip(sols,coals)), scores)
 
     opt = kp.solve()[0]
-    adv_lex = kp.greedy(order)
+    adv_lex,_ = kp.greedy(order)
     order = adv_lex_cell(individuals,list (zip (sols,coals)), scores)
     order.reverse()
-    adv_rev_lex = kp.greedy(order)
+    adv_rev_lex,_ = kp.greedy(order)
 
     order = lex_cell(individuals,coals, scores)
 
     opt = kp.solve()[0]
-    lex = kp.greedy(order)
+    lex,_ = kp.greedy(order)
     order = lex_cell(individuals,coals, scores)
     order.reverse()
-    rev_lex = kp.greedy(order)
+    rev_lex,_ = kp.greedy(order)
 
 
 
     rnd_order = list(range(n_individuals))
     random.shuffle(rnd_order)
-    rnd = kp.greedy(rnd_order)
+    rnd,_ = kp.greedy(rnd_order)
 
     real_order = kp.trivial_order()
-    real =kp.greedy(real_order)
+    real,_ =kp.greedy(real_order)
     real_order = kp.trivial_order()
     real_order.reverse()
-    rev_real = kp.greedy(real_order)
+    rev_real,_ = kp.greedy(real_order)
 
 
     #real_greedy_order = kp_greedy(kp.objcoefs, kp.A[0])
@@ -229,10 +232,10 @@ def test_kp(n_individuals):
 #generate_dataset (n,l,nd,ncoal)
 #generate_testset (n,l,nd,100)
 
-def test():
+def test(n, l, ncoal, nd):
     opttab, advtab, lextab, rndtab, realtab =[],[],[],[],[]
     for i in range(10):
-        opt,adv_lex, lex, rnd, real = adv_test_kpnd(n, 10)
+        opt,adv_lex, lex, rnd, real = adv_test_kpnd(n,l, ncoal,nd)
         opttab.append(opt)
         advtab.append((adv_lex/opt)*100)
         lextab.append((lex/opt)*100)
@@ -246,8 +249,36 @@ def test():
     realtab = np.array(realtab)
 
     print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean(), " real=", realtab.mean())
+    return advtab.mean(), lextab.mean(), rndtab.mean(), realtab.mean()
 
+def plot_test(n,ls,ncoals,nd=10):
+    #points = []
+    file = open("figures/logs.txt","a")
+    for l in ls:
+        points_l = []
+        for ncoal in ncoals:
+           advmean, lexmean, rndmean, greedmean = test(n,l,ncoal,nd) 
+           points_l.append(advmean)
+           file.write(f"{n};{l};{ncoal};{advmean};{lexmean};{rndmean};{greedmean}\n")
+        #points.append(points_l)
+        plt.plot(ncoals, points_l, label=f"{l}")
+    plt.xlabel("nb coalitions")
+    plt.ylabel("% accuracy")
+    legend_outside = plt.legend(bbox_to_anchor=(1.05, 1.0), 
+                            loc='upper left')
+    plt.savefig(f"figures/fig_n-{n}.png",
+            dpi=150, 
+            format='png', 
+            bbox_extra_artists=(legend_outside,), 
+            bbox_inches='tight')
+    plt.clf()
+    file.close()
+
+    
 
 if __name__ == '__main__':
-    generate_gcn_dataset()
+    #generate_gcn_dataset()
+    plot_test(50,[5,10,15,20,25,30,35], [10,50,100,150,200,500,1000],10)
+    plot_test(100,[5,25,50,75], [10,50,100,150,200,500,1000],10)
+    plot_test(1000,[50,250,500,750], [10,50,100,150,200,500,1000],10)
 #test()
