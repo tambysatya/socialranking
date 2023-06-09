@@ -78,10 +78,11 @@ def generate_validset(n, l, m, ncoal):
 
 
 class KPValidSet(Dataset):
-    def __init__(self, cs, As, bs, mats, sols, tgts):
+    def __init__(self, cs, As, bs, mats, sols, tgts, real_opts):
         self.mats = torch.stack(mats)
         self.sols = torch.stack(sols)
         self.opts = torch.tensor(tgts)
+        self.real_opts = torch.tensor(real_opts)
 
         self.cs = cs
         self.As = As
@@ -91,7 +92,7 @@ class KPValidSet(Dataset):
         return self.mats.size(0)
     def __getitem__(self, idx):
         pb = Problem(self.cs[idx].tolist(), self.As[idx].tolist(), self.bs[idx].tolist())
-        return pb, self.mats[idx], self.sols[idx], self.opts[idx]
+        return pb, self.mats[idx], self.sols[idx], self.opts[idx], self.real_opts[idx]
 
 def load_validset(n,l,m,ncoal,real):
     cs = torch.load(f"valid/valid-cs-{n}-{l}-{m}-{ncoal}.pt")
@@ -100,7 +101,8 @@ def load_validset(n,l,m,ncoal,real):
     mats=torch.load(f"valid/valid-mats-{n}-{l}-{m}-{ncoal}.pt")
     tgts_sols=torch.load(f"valid/valid-sols-{n}-{l}-{m}-{ncoal}-{real}.pt")
     tgts_opts=torch.load(f"valid/valid-opts-{n}-{l}-{m}-{ncoal}-{real}.pt")
-    return KPValidSet(cs,As,bs,mats,tgts_sols,tgts_opts)
+    real_opts=torch.load(f"valid/valid-opts-{n}-{l}-{m}-{ncoal}-True.pt")
+    return KPValidSet(cs,As,bs,mats,tgts_sols,tgts_opts, real_opts)
 
     
 if __name__=='__main__':

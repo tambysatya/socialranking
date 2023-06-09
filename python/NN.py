@@ -42,7 +42,7 @@ testlen=100
 gpu="cuda:1"
 lr=1e-5
 #lr=1e-6
-comm = f"{gpu}-gcn_nolin-dropout-mlp-adamW-{nbhid}*{hid}-{datalen}"
+comm = f"{gpu}-gcn_nolin-ln-dropout-mlp-adamW-{nbhid}*{hid}-{datalen}"
 use_cuda = torch.cuda.is_available()
 
 #device = torch.device("cuda:1" if use_cuda else "cpu")
@@ -96,9 +96,10 @@ def evaluate_accuracy(model,validset):
 
 
     sol_accuracy, opt_accuracy = [],[]
+    real_opt_accuracy = []
 
     for entry in validset:
-        kp, mat, tgt_sol, tgt_opt = entry
+        kp, mat, tgt_sol, tgt_opt, real_opt = entry
         pred = model(torch.stack([mat]).to(device)).cpu()
 
         order = map (itemgetter(1),sorted(zip(pred[0], range(n)), reverse=True))
@@ -107,12 +108,15 @@ def evaluate_accuracy(model,validset):
         opt_acc = opt/tgt_opt
         #sol_acc = tgt_sol.gather(0,sol).sum()/tgt_sol.sum()
         sol_acc = tgt_sol[sol==1].sum()/tgt_sol.sum()
+        real_opt_acc = opt/real_opt
         opt_accuracy.append(opt_acc)
         sol_accuracy.append(sol_acc)
+        real_opt_accuracy.append(real_opt_acc)
         
     sol_accuracy = torch.tensor(sol_accuracy)
     opt_accuracy = torch.tensor(opt_accuracy)
-    return sol_accuracy.mean(), opt_accuracy.mean()
+    real_opt_accuracy = torch.tensor(real_opt_accuracy)
+    return sol_accuracy.mean(), opt_accuracy.mean(), real_opt_accuracy.mean()
 
 
 class TestNet (nn.Module):
@@ -130,19 +134,6 @@ class TestNet (nn.Module):
             mlist.append(GCNResidual(hid))
         self.hid = nn.Sequential(*mlist)
         self.last = nn.Linear(hid*(n+m),n)
-
-        #self.gcnhid1 = GCNResnetLinear(hid)
-        #self.gcnhid2 = GCNResnetLinear(hid)
-        #self.gcnhid1 = GCNResidual(hid)
-        #self.gcnhid2 = GCNResidual(hid)
-        #self.drop1 = nn.Dropout()
-        #self.gcnhid3 = GCNResidual(hid)
-        #self.gcnhid4 = GCNResidual(hid)
-        #self.drop2 = nn.Dropout()
-        #self.gcnlast = nn.Linear(hid*(n+m), n)
-        #self.gcnlast = GCNLinear(hid,n)
-        #self.linlast = nn.Linear(n,n)
-
 
     def forward (self, x):
         self.train()
@@ -257,9 +248,15 @@ def train_gcn(model,epoch, batch_size, real=False):
                 #     writer.add_scalar(f'hid/hid-{i}', gradient_norm(layer), count)
 
         with torch.no_grad():
-            sol_acc, opt_acc = evaluate_accuracy(model,validset)
+            sol_acc, opt_acc, real_acc = evaluate_accuracy(model,validset)
             writer.add_scalar("accuracy/sol", sol_acc, e)
             writer.add_scalar("accuracy/opt", opt_acc, e)
+            writer.add_scalar("accuracy/real", real_acc, e)
+            if real_acc > best:
+                    best = accuracy
+                    if save:
+                        torch.save(model.state_dict(), f"models/model_sol_{n}-{datalen}-{real}-{comm}.pt")
+
 
             for batch in testset:
                 x, f_x = batch
@@ -279,10 +276,10 @@ def train_gcn(model,epoch, batch_size, real=False):
                 #accuracy = (n - (output-f_x).abs().sum(dim=1)).mean()
                 writer.add_scalar("loss/accuracy", accuracy , e)
 
-                if accuracy > best:
-                    best = accuracy
-                    if save:
-                        torch.save(model.state_dict(), f"model_sol_{n}-{datalen}-{real}-{comm}.pt")
+                #if accuracy > best:
+                #    best = accuracy
+                #    if save:
+                #        torch.save(model.state_dict(), f"model_sol_{n}-{datalen}-{real}-{comm}.pt")
 
 
 

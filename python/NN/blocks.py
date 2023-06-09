@@ -111,7 +111,7 @@ class GCNResidual (nn.Module):
         super (GCNResidual, self).__init__()
         self.ln1 = nn.LayerNorm (n_features)
         self.gcn1 = GraphConvolution(n_features, n_features, bias)
-        self.ln2 = nn.LayerNorm (n_features)
+        self.drop = nn.Dropout()
         self.gcn2 = GraphConvolution(n_features, n_features, bias)
     
     def forward (self, data):
@@ -119,7 +119,8 @@ class GCNResidual (nn.Module):
         x = self.ln1(x)
         x,_ = self.gcn1((x,adj))
         x = F.relu(x)
-        x = self.ln2(x)
+        #x = self.ln2(x)
+        x = self.drop(x)
         x, _ = self.gcn2((x,adj))
         x = F.relu(x)
         return (x+data[0], adj)
