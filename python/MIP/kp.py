@@ -64,6 +64,27 @@ def rndGenerateCorrelatedKPND (nbItems, valrange,n, correlation):
 def rndGenerateUniformKPND (nbItems, valrange, nd):
     return rndGenerateCorrelatedKPND (nbItems, valrange, nd, lambda wi: random.randint(1,valrange))
 
+def rndGenerateCorrelatedKPNDbiased (nbItems, valrange,n, rhsfun):
+    """ biased random maximal capacity """
+
+    #values = list (map (correlation, weights))
+    values = [random.randint (1,valrange) for i in range (nbItems)]
+    weights = []
+    bs = []
+    for i in range(n):
+        coefs = list (map (lambda _: random.randint(1,valrange), values))
+        weights.append(coefs)
+        #bi = random.randint (int(sum(coefs)/2), int(sum(coefs)))
+        #bi = random.randint (min(coefs), int(sum(coefs)))
+        #bs.append(bi)
+    Acoefs = np.array(weights)
+    for i in range (n):
+        bi = rhsfun(Acoefs[i])
+        bs.append(bi)
+
+        
+    return Problem(values, weights, bs)
+
 
 
 

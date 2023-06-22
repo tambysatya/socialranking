@@ -1,6 +1,6 @@
 
 from MIP.kp import generateUniformKPND, generateWeaklyCorrelatedKPND, generateStronglyCorrelatedKPND, kp_greedy
-from MIP.kp import rndGenerateUniformKPND
+from MIP.kp import rndGenerateUniformKPND, rndGenerateCorrelatedKPNDbiased
 from MIP.problem import random_coalitions, Problem
 from lexcell import lex_cell, adv_lex_cell
 from operator import itemgetter
@@ -132,8 +132,10 @@ def generate_dataset (n,l,nd,ncoal):
 
 def adv_test_kpnd(n_individuals,l, ncoal, nd):
     individuals = set(range(n_individuals))
-    kp = rndGenerateUniformKPND(n_individuals,1000, nd)
+    #kp = rndGenerateUniformKPND(n_individuals,10, nd)
+    #kp = rndGenerateUniformKPND(n_individuals,1000, nd)
     #kp = generateUniformKPND(n_individuals,1000, nd)
+    kp = rndGenerateCorrelatedKPNDbiased(n_individuals, 1000, nd, lambda weights: random.randint(int(weights.sum()/7), int(6*weights.sum()/7)))
     #kp = generateWeaklyCorrelatedKPND(n_individuals,1000, nd)
     #kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
     coals = random_coalitions(individuals, l,ncoal)
@@ -168,13 +170,14 @@ def adv_test_kpnd(n_individuals,l, ncoal, nd):
     real_order.reverse()
     rev_real,_ = kp.greedy(real_order)
 
+    max_score = torch.tensor(max(scores))
 
     #real_greedy_order = kp_greedy(kp.objcoefs, kp.A[0])
     #real_greedy = kp.greedy(real_greedy_order)
     #print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd, " real_greed=", real_greedy)
-    print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd, " real=", real, " rev_real=", rev_real)
+    print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd, " real=", real, " rev_real=", rev_real, " max_coals=", max_score)
 
-    return opt, adv_lex, lex, rnd, real
+    return opt, adv_lex, lex, rnd, real, max_score
 
 
 def test_kpnd(n_individuals, nd):
@@ -234,22 +237,25 @@ def test_kp(n_individuals):
 
 def test(n, l, ncoal, nd):
     opttab, advtab, lextab, rndtab, realtab =[],[],[],[],[]
+    max_coals = []
     for i in range(10):
-        opt,adv_lex, lex, rnd, real = adv_test_kpnd(n,l, ncoal,nd)
+        opt,adv_lex, lex, rnd, real, max_coal = adv_test_kpnd(n,l, ncoal,nd)
         opttab.append(opt)
         advtab.append((adv_lex/opt)*100)
         lextab.append((lex/opt)*100)
         rndtab.append((rnd/opt)*100)
         realtab.append((real/opt)*100)
+        max_coals.append((max_coal/opt)*100)
 
     opttab=np.array(opttab)
     advtab=np.array(advtab)
     lextab=np.array(lextab)
     rndtab=np.array(rndtab)
     realtab = np.array(realtab)
+    max_coals = np.array(max_coals)
 
-    print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean(), " real=", realtab.mean())
-    return advtab.mean(), lextab.mean(), rndtab.mean(), realtab.mean()
+    print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean(), " real=", realtab.mean(), " max_coals=", max_coals.mean())
+    return advtab.mean(), lextab.mean(), rndtab.mean(), realtab.mean(), max_coals.mean()
 
 def plot_test(n,ls,ncoals,nd=10):
     #points = []
@@ -257,7 +263,7 @@ def plot_test(n,ls,ncoals,nd=10):
     for l in ls:
         points_l = []
         for ncoal in ncoals:
-           advmean, lexmean, rndmean, greedmean = test(n,l,ncoal,nd) 
+           advmean, lexmean, rndmean, greedmean, maxcoalmean = test(n,l,ncoal,nd) 
            points_l.append(advmean)
            file.write(f"{n};{l};{ncoal};{advmean};{lexmean};{rndmean};{greedmean}\n")
         #points.append(points_l)
@@ -278,7 +284,9 @@ def plot_test(n,ls,ncoals,nd=10):
 
 if __name__ == '__main__':
     #generate_gcn_dataset()
-    plot_test(50,[5,10,15,20,25,30,35], [10,50,100,150,200,500,1000],10)
-    plot_test(100,[5,25,50,75], [10,50,100,150,200,500,1000],10)
-    plot_test(1000,[50,250,500,750], [10,50,100,150,200,500,1000],10)
-#test()
+    #plot_test(50,[5,15,25,35], [10,50,100,150,200,500,1000],10)
+    #plot_test(50,[5,10,15,20,25,30,35], [10,50,100,150,200,500,1000],10)
+    #plot_test(100,[5,25,50,75], [10,50,100,150,200,500,1000],10)
+    #plot_test(1000,[50,250,500,750], [10,50,100,150,200,500,1000],10)
+    test(500,250,2000,10)
+    #test(50,35,1000,nd)
