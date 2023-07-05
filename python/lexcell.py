@@ -1,6 +1,7 @@
 
 from operator import itemgetter
 import itertools
+from utils import *
 import random
 
 
@@ -13,13 +14,15 @@ def nb_total_sorted_coalitions_ei_belongs_to (el, grouped_coals):
 
     
 
-def lex_cell (individuals, coalitions, scores):
+def lex_cell (individuals, coalitions, scores, eps=0):
     #print (individuals)
-    sorted_coals = sorted (zip (scores, coalitions), reverse=True)
 
-    grouped_coals = itertools.groupby(sorted_coals, key=itemgetter(0))
-    grouped_coals = map (lambda x: (x[0], list(map (itemgetter(1), x[1]))), grouped_coals) #group by list
+    #sorted_coals = sorted (zip (scores, coalitions), reverse=True)
+    #grouped_coals = itertools.groupby(sorted_coals, key=itemgetter(0))
+    #grouped_coals = map (lambda x: (x[0], list(map (itemgetter(1), x[1]))), grouped_coals) #group by list
     #print (sorted_coals)
+
+    grouped_coals = list(reversed(my_groupby (zip (scores, coalitions), eps) ))
 
 
 
@@ -45,13 +48,16 @@ def nb_coals_equal_1(el, coals):
 def compute_eq_classes (el, grouped_coals):
     return list(map (lambda gi: nb_coals_equal_1(el,gi), grouped_coals))
  
-def adv_lex_cell (individuals, coalitions, scores):
+def adv_lex_cell (individuals, coalitions, scores, eps=0):
     #print (individuals)
-    sorted_coals = sorted (zip (scores, coalitions), reverse=True)
-
-    grouped_coals = itertools.groupby(sorted_coals, key=itemgetter(0))
-    grouped_coals = map (lambda x: (list(map (itemgetter(1), x[1]))), grouped_coals) #group by list
+    #sorted_coals = sorted (zip (scores, coalitions), reverse=True)
+    #grouped_coals = itertools.groupby(sorted_coals, key=itemgetter(0))
+    #grouped_coals = map (lambda x: (list(map (itemgetter(1), x[1]))), grouped_coals) #group by list
+    #print (coalitions)
+    #print (list(grouped_coals))
     #print (sorted_coals)
+    grouped_coals = list(reversed(my_groupby (zip (scores, coalitions), eps) ))
+    grouped_coals = map (itemgetter(1), grouped_coals)
 
 
 

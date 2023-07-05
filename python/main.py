@@ -4,6 +4,7 @@ from MIP.kp import rndGenerateUniformKPND, rndGenerateCorrelatedKPNDbiased
 from MIP.problem import random_coalitions, Problem
 from lexcell import lex_cell, adv_lex_cell
 from operator import itemgetter
+import itertools
 import random
 import numpy as np
 import torch
@@ -129,8 +130,55 @@ def generate_dataset (n,l,nd,ncoal):
     torch.save(b, f"b-{n}_{nd}_{l}.pt")
     
     
+def test_kp_density(n_individuals,l, nd, eps):
+    individuals = set(range(n_individuals))
+    #kp = rndGenerateUniformKPND(n_individuals,10, nd)
+    #kp = rndGenerateUniformKPND(n_individuals,1000, nd)
+    #kp = generateUniformKPND(n_individuals,1000, nd)
+    kp = rndGenerateCorrelatedKPNDbiased(n_individuals, 1000, nd, lambda weights: random.randint(int(weights.sum()/7), int(6*weights.sum()/7)))
+    #kp = generateWeaklyCorrelatedKPND(n_individuals,1000, nd)
+    #kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
+    coals = []
+    #coals = itertools.combinations(individuals, l)
+    for i in range (1,l):
+        combs = itertools.combinations(individuals, i)
+        coals += combs
+    #scores = list (map (kp.density, coals))
+    scores = list (map (kp.density_scaled, coals))
 
-def adv_test_kpnd(n_individuals,l, ncoal, nd):
+    order = lex_cell(individuals,coals, scores, eps)
+
+    opt = kp.solve()[0]
+    lex,_ = kp.greedy(order)
+    order = lex_cell(individuals,coals, scores, eps)
+    order.reverse()
+    rev_lex,_ = kp.greedy(order)
+
+
+
+    rnd_order = list(range(n_individuals))
+    random.shuffle(rnd_order)
+    rnd,_ = kp.greedy(rnd_order)
+
+    real_order = kp.trivial_order()
+    real,_ =kp.greedy(real_order)
+    real_order = kp.trivial_order()
+    real_order.reverse()
+    rev_real,_ = kp.greedy(real_order)
+
+    scaled_order = kp.trivial_order_scaled()
+    scaled, _ = kp.greedy(scaled_order)
+
+    max_score = torch.tensor(max(scores))
+
+    print ("opt=",opt," density lex=", lex, " rev_lex=",rev_lex, " scaled_real=", scaled, " real=", real, " rev_real=", rev_real, " max_coals=", max_score)
+    #print ("opt=",opt," density lex=", lex, " rev_lex=",rev_lex, " rnd=", rnd, " real=", real, " rev_real=", rev_real, " max_coals=", max_score)
+
+    return opt,  lex, scaled, real, max_score
+
+
+
+def adv_test_kpnd(n_individuals,l, ncoal, nd, eps):
     individuals = set(range(n_individuals))
     #kp = rndGenerateUniformKPND(n_individuals,10, nd)
     #kp = rndGenerateUniformKPND(n_individuals,1000, nd)
@@ -147,6 +195,7 @@ def adv_test_kpnd(n_individuals,l, ncoal, nd):
     opt = kp.solve()[0]
     adv_lex,_ = kp.greedy(order)
     order = adv_lex_cell(individuals,list (zip (sols,coals)), scores)
+
     order.reverse()
     adv_rev_lex,_ = kp.greedy(order)
 
@@ -172,9 +221,6 @@ def adv_test_kpnd(n_individuals,l, ncoal, nd):
 
     max_score = torch.tensor(max(scores))
 
-    #real_greedy_order = kp_greedy(kp.objcoefs, kp.A[0])
-    #real_greedy = kp.greedy(real_greedy_order)
-    #print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd, " real_greed=", real_greedy)
     print ("opt=",opt," adv_lex=", adv_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " rnd=", rnd, " real=", real, " rev_real=", rev_real, " max_coals=", max_score)
 
     return opt, adv_lex, lex, rnd, real, max_score
@@ -235,11 +281,11 @@ def test_kp(n_individuals):
 #generate_dataset (n,l,nd,ncoal)
 #generate_testset (n,l,nd,100)
 
-def test(n, l, ncoal, nd):
+def test_opt_score(n, l, ncoal, nd, eps):
     opttab, advtab, lextab, rndtab, realtab =[],[],[],[],[]
     max_coals = []
     for i in range(10):
-        opt,adv_lex, lex, rnd, real, max_coal = adv_test_kpnd(n,l, ncoal,nd)
+        opt,adv_lex, lex, rnd, real, max_coal = adv_test_kpnd(n,l, ncoal,nd, eps)
         opttab.append(opt)
         advtab.append((adv_lex/opt)*100)
         lextab.append((lex/opt)*100)
@@ -256,6 +302,27 @@ def test(n, l, ncoal, nd):
 
     print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " lex=", lextab.mean(), " rnd=", rndtab.mean(), " real=", realtab.mean(), " max_coals=", max_coals.mean())
     return advtab.mean(), lextab.mean(), rndtab.mean(), realtab.mean(), max_coals.mean()
+
+def test_density_score(n, l, nd, eps, ntests=10):
+    opttab,  lextab, scaledtab, realtab =[],[],[],[]
+    max_coals = []
+    for i in range(ntests):
+        opt, lex, scaled, real, max_coal = test_kp_density(n,l, nd, eps)
+        opttab.append(opt)
+        lextab.append((lex/opt)*100)
+        scaledtab.append((scaled/opt)*100)
+        realtab.append((real/opt)*100)
+        max_coals.append((max_coal/opt)*100)
+
+    opttab=np.array(opttab)
+    lextab=np.array(lextab)
+    scaledtab=np.array(scaledtab)
+    realtab = np.array(realtab)
+    max_coals = np.array(max_coals)
+
+    print ("density opt=",opttab.mean(), " lex=", lextab.mean(), " scaled=", scaledtab.mean(), " real=", realtab.mean(), " max_coals=", max_coals.mean())
+    return  lextab.mean(), scaledtab.mean(), realtab.mean(), max_coals.mean()
+
 
 def plot_test(n,ls,ncoals,nd=10):
     #points = []
@@ -288,5 +355,7 @@ if __name__ == '__main__':
     #plot_test(50,[5,10,15,20,25,30,35], [10,50,100,150,200,500,1000],10)
     #plot_test(100,[5,25,50,75], [10,50,100,150,200,500,1000],10)
     #plot_test(1000,[50,250,500,750], [10,50,100,150,200,500,1000],10)
-    test(500,250,2000,10)
+    test_opt_score(50,25, 100,10, 100000)
+    #test_density_score(50,2, 10, 0, ntests=100)
+    #test(500,250,2000,10)
     #test(50,35,1000,nd)

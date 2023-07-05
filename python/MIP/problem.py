@@ -123,12 +123,22 @@ class Problem:
             w_i = 1
             for j in range (len (self.A)):
                 w_i += self.A[j][i]
-            
             scores.append(self.objcoefs[i]/w_i)
-
         ret = zip (scores, list(range(len(self.objcoefs))))
         ret = sorted(ret, reverse=True)
         return list(map(itemgetter(1),ret))
+    def trivial_order_scaled (self):
+        scores=[]
+        for i in range (len(self.objcoefs)):
+            w_i = 1
+            for j in range (len (self.A)):
+                w_i += self.A[j][i]/self.b[j]
+            scores.append(self.objcoefs[i]/w_i)
+        ret = zip (scores, list(range(len(self.objcoefs))))
+        ret = sorted(ret, reverse=True)
+        return list(map(itemgetter(1),ret))
+
+
 
     def toAdjacencyMatrix (self):
         nvars = len(self.objcoefs)
@@ -150,6 +160,36 @@ class Problem:
         for i in range (nvars): #cis
             mat[i][i] = self.objcoefs[i]/1000
         return mat
+    def density (self, coal):
+        score = 0
+        for item in coal:
+            v, w = 0,0
+            v += self.objcoefs[item]
+            for weight in range(len(self.A)):
+                w += self.A[weight][item]
+            score += (v/w)
+        return score
+    def density_merge (self, coal):
+        v, w = 0,0
+        for item in coal:
+            v += self.objcoefs[item]
+            for weight in range(len(self.A)):
+                w += self.A[weight][item]
+        return v/w
+    def density_scaled (self, coal):
+        v, w = 0,0
+        for item in coal:
+            v += self.objcoefs[item]
+            for i, weight in enumerate(range(len(self.A))):
+                w += self.A[weight][item] / self.b[i]
+        return v/w
+    
+
+    
+
+
+
+
             
 def random_coalition (individuals, l):
     inds = list(individuals)
