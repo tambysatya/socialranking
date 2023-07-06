@@ -120,7 +120,7 @@ class Problem:
     def trivial_order (self):
         scores=[]
         for i in range (len(self.objcoefs)):
-            w_i = 1
+            w_i = 0
             for j in range (len (self.A)):
                 w_i += self.A[j][i]
             scores.append(self.objcoefs[i]/w_i)
@@ -130,7 +130,7 @@ class Problem:
     def trivial_order_scaled (self):
         scores=[]
         for i in range (len(self.objcoefs)):
-            w_i = 1
+            w_i = 0
             for j in range (len (self.A)):
                 w_i += self.A[j][i]/self.b[j]
             scores.append(self.objcoefs[i]/w_i)
@@ -180,8 +180,8 @@ class Problem:
         v, w = 0,0
         for item in coal:
             v += self.objcoefs[item]
-            for i, weight in enumerate(range(len(self.A))):
-                w += self.A[weight][item] / self.b[i]
+            for weight in range(len(self.A)):
+                w += self.A[weight][item] / self.b[weight]
         return v/w
     
 
