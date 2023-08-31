@@ -181,8 +181,8 @@ def test_kp_density(n_individuals,l, nd, eps):
 
 def adv_test_kpnd(n_individuals,l, ncoal, nd, eps, nclasses):
     individuals = set(range(n_individuals))
-    kp = rndGenerateUniformKPND(n_individuals,10, nd)
-    #kp = rndGenerateUniformKPND(n_individuals,1000, nd)
+    #kp = rndGenerateUniformKPND(n_individuals,10, nd)
+    kp = rndGenerateUniformKPND(n_individuals,1000, nd)
     #kp = generateUniformKPND(n_individuals,1000, nd)
     #kp = rndGenerateCorrelatedKPNDbiased(n_individuals, 1000, nd, lambda weights: random.randint(int(weights.sum()/4), int(3*weights.sum()/4)))
     #kp = rndGenerateCorrelatedKPNDbiased(n_individuals, 1000, nd, lambda weights: random.randint(int(weights.sum()/7), int(6*weights.sum()/7)))
@@ -371,7 +371,9 @@ if __name__ == '__main__':
 ########## window laurent
     #test_opt_score(50,25, 500,10, 0.1, ntests=10)  #opt= 12013.4  advtab= 97.0256  lex= 91.87744  scaled= 87.56992  real= 82.68021  max_coals= 93.15741
     #test_opt_score(50,15, 500,10, 0.1, ntests=10)   #opt= 11547.1  advtab= 87.34828  lex= 81.81285  scaled= 94.34419  real= 88.75807  max_coals= 77.76577
-    test_opt_score(100,25, 1000,10, 0.1,10, ntests=10) # individuals, depth, ncoals, nb ctrs, eps, nclasses
+
+    #opt= 15754.57999999999  advtab= 87.81137 lintab= 93.29765  lex= 81.412254  scaled= 91.894394  real= 76.46579  max_coals= 75.35057 
+    test_opt_score(100,25, 1000,10, 0.1,10, ntests=100) # individuals, depth, ncoals, nb ctrs, eps, nclasses
     #test_opt_score(100,50, 2000,10, 0.1,10, ntests=10) # individuals, depth, ncoals, nb ctrs, eps, nclasses
 
 
