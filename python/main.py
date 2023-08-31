@@ -361,6 +361,13 @@ if __name__ == '__main__':
     #plot_test(50,[5,10,15,20,25,30,35], [10,50,100,150,200,500,1000],10)
     #plot_test(100,[5,25,50,75], [10,50,100,150,200,500,1000],10)
     #plot_test(1000,[50,250,500,750], [10,50,100,150,200,500,1000],10)
+########## window laurent
+    #test_opt_score(50,25, 500,10, 0.1, ntests=10)  #opt= 12013.4  advtab= 97.0256  lex= 91.87744  scaled= 87.56992  real= 82.68021  max_coals= 93.15741
+    #test_opt_score(50,15, 500,10, 0.1, ntests=10)   #opt= 11547.1  advtab= 87.34828  lex= 81.81285  scaled= 94.34419  real= 88.75807  max_coals= 77.76577
+    test_opt_score(100,50, 1000,10, 0.1, ntests=100)  
+
+
+######### mon approche
     #test_opt_score(100,50, 500,10, 0.1, ntests=10) # opt= 22987.3  advtab= 94.50146  lex= 80.72317  scaled= 92.069115  real= 83.20607  max_coals= 88.2104
     #test_opt_score(100,50, 1000,10, 0.1, ntests=10) # opt= 25777.8  advtab= 94.43021  lex= 88.21464  scaled= 91.421  real= 84.35704  max_coals= 87.06607
 

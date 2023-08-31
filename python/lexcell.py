@@ -22,7 +22,9 @@ def lex_cell (individuals, coalitions, scores, eps=0):
     #grouped_coals = map (lambda x: (x[0], list(map (itemgetter(1), x[1]))), grouped_coals) #group by list
     #print (sorted_coals)
 
-    grouped_coals = list(reversed(my_groupby (zip (scores, coalitions), eps) ))
+    scorelist = zip (scores, coalitions)
+    grouped_coals = list(reversed(my_groupby_window(scorelist, eps) ))
+    #grouped_coals = list(reversed(my_groupby(scorelist, eps) ))
 
 
 
@@ -49,27 +51,31 @@ def compute_eq_classes (el, grouped_coals):
     return list(map (lambda gi: nb_coals_equal_1(el,gi), grouped_coals))
  
 def adv_lex_cell (individuals, coalitions, scores, eps=0):
-    #print (individuals)
-    #sorted_coals = sorted (zip (scores, coalitions), reverse=True)
-    #grouped_coals = itertools.groupby(sorted_coals, key=itemgetter(0))
-    #grouped_coals = map (lambda x: (list(map (itemgetter(1), x[1]))), grouped_coals) #group by list
-    #print (coalitions)
-    #print (list(grouped_coals))
-    #print (sorted_coals)
+    """
+        A coalition influence ONLY the performance of the items that have been taken
+    """
     grouped_coals = list(reversed(my_groupby (zip (scores, coalitions), eps) ))
     grouped_coals = map (itemgetter(1), grouped_coals)
 
+    lex_scores = map (lambda ei, gcoals: compute_eq_classes(ei, gcoals), individuals, itertools.tee(grouped_coals, len(individuals)))
+    lex_scores = sorted (zip(lex_scores, individuals), reverse=True)
+    lex_order = map (itemgetter(1), lex_scores)
+    return list(lex_order)
 
+ def adv_lex_cell (individuals, coalitions, scores, nclasses):
+    """
+        A coalition influence ONLY the performance of the items that have been taken
+        with linear scales
+    """
+    grouped_coals = list(reversed(linear_scale_groupby (zip (scores, coalitions), eps) ))
+    grouped_coals = map (itemgetter(1), grouped_coals)
 
     lex_scores = map (lambda ei, gcoals: compute_eq_classes(ei, gcoals), individuals, itertools.tee(grouped_coals, len(individuals)))
     lex_scores = sorted (zip(lex_scores, individuals), reverse=True)
-
-    #print (list (lex_scores))
     lex_order = map (itemgetter(1), lex_scores)
-    
     return list(lex_order)
 
-   
+  
     
     
 
