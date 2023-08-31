@@ -1,5 +1,6 @@
 
-
+import numpy as np
+from operator import itemgetter
 
 def my_groupby(scorelist, eps):
     l = sorted(scorelist)
@@ -45,11 +46,28 @@ def my_groupby_window(scorelist, eps, initval=None):
     print ("nb eq classes: ", len(packs))
     return packs
         
+
+def pop_nfirst (l, n):
+    if l == []:
+        return []
+    else:
+        return (l[:n], l[n:])
+def group_by_chunks(l,n):
+    cur = l
+    ret = []
+    i = 0
+    while (cur != []):
+        (tmp, cur) = pop_nfirst(cur, n)
+        tmp = map (itemgetter(1), tmp)
+        ret.append((i,list(tmp)))
+        i += 1
+    return ret
+        
+
+    
 def linear_scale_groupby (scorelist, nclasses):
     l = sorted (scorelist)
-    groups = np.split(np.array(scorelist), nclasses)
-    groups = map (list, groups)
-    return list (groups)
+    return group_by_chunks(l,int(len(l)/nclasses))
 
 
 
