@@ -292,6 +292,7 @@ def test_kp(n_individuals):
 #generate_testset (n,l,nd,100)
 
 def test_opt_score(n, l, ncoal, nd, eps, nclasses, ntests=10):
+    print (f"n={n} l={l} ncoal={ncoal} nctrs={nd} eps={eps} nclasses={nclasses}")
     opttab, advtab, lintab, lextab, scaledtab, realtab =[],[],[],[],[],[]
     max_coals = []
     for i in range(ntests):
@@ -364,16 +365,16 @@ def plot_test(n,ls,ncoals,nd, eps, ntests, test_fun):
 if __name__ == '__main__':
     #generate_gcn_dataset()
     #plot_test(50,[15,25], [100,200],10, 0.1, 10,test_opt_score)
-    #plot_test(50,[5,15,25,35], [10,50,100,150,200,500,1000],10)
-    #plot_test(50,[5,10,15,20,25,30,35], [10,50,100,150,200,500,1000],10)
-    #plot_test(100,[5,25,50,75], [10,50,100,150,200,500,1000],10)
-    #plot_test(1000,[50,250,500,750], [10,50,100,150,200,500,1000],10)
-########## window laurent
-    #test_opt_score(50,25, 500,10, 0.1, ntests=10)  #opt= 12013.4  advtab= 97.0256  lex= 91.87744  scaled= 87.56992  real= 82.68021  max_coals= 93.15741
-    #test_opt_score(50,15, 500,10, 0.1, ntests=10)   #opt= 11547.1  advtab= 87.34828  lex= 81.81285  scaled= 94.34419  real= 88.75807  max_coals= 77.76577
-
     #opt= 15754.57999999999  advtab= 87.81137 lintab= 93.29765  lex= 81.412254  scaled= 91.894394  real= 76.46579  max_coals= 75.35057 
-    test_opt_score(100,25, 1000,10, 0.1,10, ntests=100) # individuals, depth, ncoals, nb ctrs, eps, nclasses
+
+    test_opt_score(100,25, 1000,20, 0.1,100, ntests=10) # individuals, depth, ncoals, nb ctrs, eps, nclasses
+
+    #pour test range=10 : opt= 109.98199999999997  advtab= 91.738106 lintab= 94.199486  lex= 83.62069  scaled= 87.16414  real= 66.62311  max_coals= 85.7066 
+    #test_opt_score(100,25, 1000,20, 0.1,10, ntests=1000) # individuals, depth, ncoals, nb ctrs, eps, nclasses
+
+    # pour testrandom range=10 : opt= 158.26  advtab= 88.59531 lintab= 92.748215  lex= 81.07888  scaled= 90.98319  real= 71.510826  max_coals= 77.8567 
+    #test_opt_score(100,25, 1000,10, 0.1,10, ntests=100) # individuals, depth, ncoals, nb ctrs, eps, nclasses
+    #pour test random range=1000 ntests=100
     #test_opt_score(100,50, 2000,10, 0.1,10, ntests=10) # individuals, depth, ncoals, nb ctrs, eps, nclasses
 
 
