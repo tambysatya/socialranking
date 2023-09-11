@@ -26,7 +26,7 @@ def init_cplex ():
 
 
 class Problem:
-    def __init__ (self, objcoefs, A, b): # [Double], [[Double]], [Double]
+    def __init__ (self, objcoefs, A, b, lb=None): # [Double], [[Double]], [Double]
         """
             objcoefs is the objective function to be MAXIMIZED
             A is the constraint matrix (list of rows)
@@ -39,6 +39,7 @@ class Problem:
         self.objcoefs = objcoefs
         self.A = A
         self.b = b
+        self.lb = lb
 
         vars = list (map (lambda vi: "x" + str(vi), range (0,len(objcoefs))) )
 
@@ -46,23 +47,36 @@ class Problem:
         self.pb.objective.set_sense(self.pb.objective.sense.maximize)
         self.pb.variables.add(obj=objcoefs, types=types, names=vars)
         #self.pb.variables.add(obj=objcoefs, lb=0, ub=1, types=types, names=vars)
-        for row, bi in zip (A,b):
-            self.pb.linear_constraints.add (lin_expr=[[vars,row]], senses="L", rhs = [bi] )
+        if lb != None:
+            for i,(row, bi) in enumerate(zip (A, lb)):
+                self.pb.linear_constraints.add (names=[f"lb_{i}"], lin_expr=[[vars,row]], senses="G", rhs=[bi])
 
-    def solve (self):
+        for i, (row, bi) in enumerate(zip (A,b)):
+            self.pb.linear_constraints.add (names=[f"ub_{i}"], lin_expr=[[vars,row]], senses="L", rhs = [bi] )
+    def solve (self, rhschanges=[]): #rhschanges is a list of pair (index, newrhs) to temporarily modify the program before solving
+
+        if rhschanges != []:
+            ctrsind, newrhs = zip(*rhschanges)
+            oldrhs = self.pb.linear_constraints.get_rhs(ctrsind)
+            self.pb.linear_constraints.set_rhs(rhschanges)
 
         self.pb.solve()
         sol = self.pb.solution.get_values()
         opt = self.pb.solution.get_objective_value()
+
+        if rhschanges != []:
+            self.pb.linear_constraints.set_rhs(zip(ctrsind,oldrhs)) #restore the initial rhs
         return (opt, sol)
     
-    def solve_coalition(self, coal): # coal :: [Int] which is the indice of variables that can be chosen. All other variables are force to be equal to zero
+    def solve_coalition(self, coal, rhschanges=[]):
+        # coal :: [Int] which is the indice of variables that can be chosen. All other variables are force to be equal to zero
+        #rhschanges = [(Int,Double)] the indices of the constraints that change
 
         """ solves the problem every other variables forced to be equal to zeroes """
         fixed_vars = self.var_index - coal
         self.pb.variables.set_upper_bounds(zip (fixed_vars,itertools.repeat(0)))
 
-        opt, sol = self.solve()
+        opt, sol = self.solve(rhschanges=rhschanges)
         self.pb.variables.set_upper_bounds(zip (fixed_vars,itertools.repeat(1)))
 
         return opt, sol
