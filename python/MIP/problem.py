@@ -215,6 +215,26 @@ def random_coalitions (individuals, l, n):
     ret = [random_coalition(individuals,l) for i in range (n)]
     return [k for k, v in itertools.groupby(sorted(ret)) ]
 
+
+def coalition_distrib(individuals, l, weights):
+    """ generates a coalition of size l according to the specified distribution """
+    total = sum(weights)
+    distrib = [w/total for w in weights]
+
+    index = random.choices(range(len(individuals)), weights=distrib)
+    individual = individuals[index[0]]
+    individuals.pop(index[0])
+    weights.pop(index[0])
+
+    if l == 1:
+        return [individual]
+    else:
+        return [individual]+coalition_distrib(individuals,l-1, weights)
+
+def random_coalitions_distrib(individuals, l, n, weights):
+    ret = [set(coalition_distrib(individuals.copy(), l, weights.copy())) for i in range (n)]
+    return [k for k, v in itertools.groupby(sorted(ret)) ]
+    
        
         
 

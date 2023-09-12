@@ -1,4 +1,4 @@
-from MIP.problem import random_coalitions, Problem
+from MIP.problem import random_coalitions, Problem, random_coalitions_distrib
 import random
 
 from lexcell import lex_cell, adv_lex_cell, adv_lex_cell, linear_adv_lex_cell
@@ -43,6 +43,11 @@ class SetCover ():
                 covered.add(item)
         notcovered = items.difference(covered)
         return [(item,0) for item in notcovered]
+    def covers_only(self, tocover):
+        """ computes rhschange to enforce covering on a subset of items"""
+        items = set(range(self.nitems)).difference(tocover)
+        return [(i, 0) for i in items]
+        
 
     def heuristic(self):
         sol = []
@@ -75,6 +80,13 @@ class SetCover ():
                 tocover = tocover.difference(self.adjlist[c])
         score = sum([self.weights[c] for c in sol])
         return score
+    def scores (self):
+        ret = []
+        eps=1e-9
+        for c in range(self.nclasses):
+            ret.append(len(self.adjlist[c])/self.weights[c])
+            #ret.append(self.weights[c]/(len(self.adjlist[c])+eps))
+        return ret
         
             
 def generateSC(nitems, nclasses, maxweight, density):
@@ -112,10 +124,24 @@ def test_setcover(nitems, nsets, maxweight, density, l, ncoal, eps, nclasses):
 
     opt = pb.solve()[0]
 
-    coals = random_coalitions(individuals, l,ncoal)
-    print ("nb_coals=", len(coals))
+    coals = random_coalitions(individuals, l,ncoal) # sampling uniforme
+    #coals = random_coalitions_distrib(list(individuals), l,ncoal, ins.scores()) # sampling  pas uniforme
+    
+    print ("nb_coals=", len(coals), " nitems=", ins.nitems)
 
     evaluation = map(lambda coal: pb.solve_coalition(coal, rhschanges=ins.computeRHSChanges(coal)), coals)
+   # evaluation = map(lambda coal, item_coal: pb.solve_coalition(coal, rhschanges=ins.covers_only(item_coal)), coals, item_coals)
+   # item_coals = random_coalitions(set(range(ins.nitems)), l, ncoal)
+   # coals = []
+   # for item_coal in item_coals:
+   #     set_coal = set()
+   #     for item in item_coal:
+   #         set_coal = set_coal.union(ins.covers[item])
+   #     coals.append(set_coal)
+
+
+
+
     scores, sols = zip (*evaluation)
 
     order = adv_lex_cell(individuals, list(zip(sols,coals)), scores, eps)
@@ -134,14 +160,15 @@ def test_setcover(nitems, nsets, maxweight, density, l, ncoal, eps, nclasses):
 
 
 def run_tests_setcover(nitems,nsets,maxweight, density,l,ncoal,eps,nclasses,ntests=10):
+    print (f"nitems={nitems} nsets={nsets} maxw={maxweight} density={density} l={l} ncoal={ncoal} eps={eps} nclasses={nclasses} ntests={ntests}")
     opttab, geotab, ntilestab, heuristictab, maxscoretab = [],[],[],[],[]
     for i in range(ntests):
        opt, geo, ntiles, heur, maxscore = test_setcover(nitems, nsets, maxweight, density, l, ncoal, eps, nclasses) 
        opttab.append(opt)
-       geotab.append(geo)
-       ntilestab.append(ntiles)
-       heuristictab.append(heur)
-       maxscoretab.append(maxscore)
+       geotab.append((geo-opt)/opt)
+       ntilestab.append((ntiles-opt)/opt)
+       heuristictab.append((heur-opt)/opt)
+       maxscoretab.append((maxscore-opt)/opt)
     
     opttab = np.array(opttab)
     geotab = np.array(geotab)
