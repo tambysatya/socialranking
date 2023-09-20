@@ -209,62 +209,6 @@ def adv_test_IS(n_individuals, maxweight, density, l, ncoal, eps, nclasses):
 
 
 
-def adv_test_kpnd(n_individuals,l, ncoal, nd, eps, nclasses):
-    individuals = set(range(n_individuals))
-    #kp = rndGenerateUniformKPND(n_individuals,10, nd)
-    p = rndGenerateUniformKPND(n_individuals,1000, nd)
-    #kp = generateUniformKPND(n_individuals,1000, nd)
-    #kp = rndGenerateCorrelatedKPNDbiased(n_individuals, 1000, nd, lambda weights: random.randint(int(weights.sum()/4), int(3*weights.sum()/4)))
-    #kp = rndGenerateCorrelatedKPNDbiased(n_individuals, 1000, nd, lambda weights: random.randint(int(weights.sum()/7), int(6*weights.sum()/7)))
-    #kp = generateWeaklyCorrelatedKPND(n_individuals,1000, nd)
-    #kp = generateStronglyCorrelatedKPND(n_individuals,1000, nd)
-    coals = random_coalitions(individuals, l,ncoal)
-    print ("nb_coals=", len(coals))
-    scores,sols = zip(*(list (map (kp.solve_coalition, coals))))
-
-    order = adv_lex_cell(individuals, list(zip(sols,coals)), scores, eps)
-
-    opt = kp.solve()[0]
-    adv_lex,_ = kp.greedy(order)
-
-    lin_order = linear_adv_lex_cell(individuals,list (zip (sols,coals)), scores, nclasses)
-    lin_lex,_=kp.greedy(lin_order)
-
-
-
-    order = adv_lex_cell(individuals,list (zip (sols,coals)), scores, eps)
-    order.reverse()
-    adv_rev_lex,_ = kp.greedy(order)
-
-    order = lex_cell(individuals,coals, scores, eps)
-
-    opt = kp.solve()[0]
-    lex,_ = kp.greedy(order)
-    order = lex_cell(individuals,coals, scores, eps)
-    order.reverse()
-    rev_lex,_ = kp.greedy(order)
-
-
-
-    #rnd_order = list(range(n_individuals))
-    #random.shuffle(rnd_order)
-    #rnd,_ = kp.greedy(rnd_order)
-
-    scaled_order = kp.trivial_order_scaled()
-    scaled, _ = kp.greedy(scaled_order)
-
-    real_order = kp.trivial_order()
-    real,_ =kp.greedy(real_order)
-    real_order = kp.trivial_order()
-    real_order.reverse()
-    rev_real,_ = kp.greedy(real_order)
-
-    max_score = torch.tensor(max(scores))
-
-    print ("opt=",opt," adv_lex=", adv_lex, "lin=", lin_lex, " lex=", lex, " adv_rev_lex=", adv_rev_lex, " rev_lex=",rev_lex, " scaled=", scaled, " real=", real, " rev_real=", rev_real, " max_coals=", max_score)
-
-    return opt, adv_lex, lin_lex, lex, scaled, real, max_score
-
 
 def test_kpnd(n_individuals, nd):
     individuals = set(range(n_individuals))
@@ -346,31 +290,6 @@ def test_IS (n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=
 
 
 
-def test_opt_score(n, l, ncoal, nd, eps, nclasses, ntests=10):
-    print (f"n={n} l={l} ncoal={ncoal} nctrs={nd} eps={eps} nclasses={nclasses}")
-    opttab, advtab, lintab, lextab, scaledtab, realtab =[],[],[],[],[],[]
-    max_coals = []
-    for i in range(ntests):
-        opt,adv_lex, lin_lex, lex, scaled, real, max_coal = adv_test_kpnd(n,l, ncoal,nd, eps, nclasses)
-        opttab.append(opt)
-        advtab.append((adv_lex/opt)*100)
-        lintab.append((lin_lex/opt)*100)
-        lextab.append((lex/opt)*100)
-        scaledtab.append((scaled/opt)*100)
-        realtab.append((real/opt)*100)
-        max_coals.append((max_coal/opt)*100)
-
-    opttab=np.array(opttab)
-    advtab=np.array(advtab)
-    lintab=np.array(lintab)
-    lextab=np.array(lextab)
-    scaledtab=np.array(scaledtab)
-    realtab = np.array(realtab)
-    max_coals = np.array(max_coals)
-
-    print ("opt=",opttab.mean(), " advtab=", advtab.mean(), "lintab=",lintab.mean(), " lex=", lextab.mean(), " scaled=", scaledtab.mean(), " real=", realtab.mean(), " max_coals=", max_coals.mean())
-    return advtab.mean(), lextab.mean(), scaledtab.mean(), realtab.mean(), max_coals.mean()
-
 def test_density_score(n, l, nd, eps, ntests=10):
     opttab,  lextab, scaledtab, realtab =[],[],[],[]
     max_coals = []
@@ -424,7 +343,7 @@ if __name__ == '__main__':
 
     #test_opt_score(100,25, 1000,20, 0.1,100, ntests=10) # individuals, depth, ncoals, nb ctrs, eps, nclasses
 
-    test_IS (100, 50, 0.3, 5, 1000, 0.1, 100, ntests=100) #(n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
+    test_IS (100, 50, 0.7, 5, 1000, 0.1, 100, ntests=100) #(n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
 
     #pour test range=10 : opt= 109.98199999999997  advtab= 91.738106 lintab= 94.199486  lex= 83.62069  scaled= 87.16414  real= 66.62311  max_coals= 85.7066 
     #test_opt_score(100,25, 1000,20, 0.1,10, ntests=1000) # individuals, depth, ncoals, nb ctrs, eps, nclasses

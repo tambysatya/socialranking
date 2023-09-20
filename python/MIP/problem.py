@@ -185,11 +185,13 @@ class Problem:
         return score
     def density_merge (self, coal):
         v, w = 0,0
+        total=0
         for item in coal:
             v += self.objcoefs[item]
             for weight in range(len(self.A)):
                 w += self.A[weight][item]
-        return v/w
+            total += self.objcoefs[item]/w
+        return total+v/w
     def density_scaled (self, coal):
         v, w = 0,0
         for item in coal:

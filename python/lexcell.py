@@ -35,6 +35,20 @@ def lex_cell (individuals, coalitions, scores, eps=0):
     lex_order = map (itemgetter(1), lex_scores)
     
     return list(lex_order)
+def linear_lex_cell (individuals, coalitions, scores, nclasses):
+    scorelist = zip (scores, coalitions)
+    grouped_coals = list(reversed(linear_scale_groupby(scorelist, nclasses) ))
+
+
+
+    lex_scores = map (lambda ei, gcoals: nb_total_sorted_coalitions_ei_belongs_to(ei, gcoals), individuals, itertools.tee(grouped_coals, len(individuals)))
+    lex_scores = sorted (zip(lex_scores, individuals), reverse=True)
+
+    #print (list (lex_scores))
+    lex_order = map (itemgetter(1), lex_scores)
+    
+    return list(lex_order)
+
 
 
 ################## extended version
