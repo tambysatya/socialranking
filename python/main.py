@@ -359,7 +359,7 @@ if __name__ == '__main__':
 
     #test_kps(100,10, 1000,20, 0.1,20, ntests=10) # individuals, depth, ncoals, nb ctrs, eps, nclasses
 
-    test_IS (100, 50, 0.2, 3, 10000, 0.1, 20, ntests=10) #(n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
+    test_IS (100, 50, 0.7, 25, 1000, 0.1, 20, ntests=10) #(n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
 
     #pour test range=10 : opt= 109.98199999999997  advtab= 91.738106 lintab= 94.199486  lex= 83.62069  scaled= 87.16414  real= 66.62311  max_coals= 85.7066 
     #test_opt_score(100,25, 1000,20, 0.1,10, ntests=1000) # individuals, depth, ncoals, nb ctrs, eps, nclasses
