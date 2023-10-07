@@ -12,6 +12,13 @@ class IndependentSet():
         self.weights = weights
         self.adjlist = adjlist
     
+    def efficiency (self, vertice):
+        deg = 0
+        for e in self.adjlist:
+            if vertice in e:
+                deg += 1
+        return self.weights[vertice]/deg
+    
     def toProblem (self):
         
         ctrs = []

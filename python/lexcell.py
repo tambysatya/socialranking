@@ -36,7 +36,7 @@ def lex_cell (individuals, coalitions, scores, eps=0):
     
     return list(lex_order)
 def linear_lex_cell (individuals, coalitions, scores, nclasses):
-    scorelist = set(zip (scores, coalitions))
+    scorelist = zip (scores, coalitions)
     grouped_coals = list(reversed(linear_scale_groupby(scorelist, nclasses) ))
 
 
@@ -50,6 +50,17 @@ def linear_lex_cell (individuals, coalitions, scores, nclasses):
     return list(lex_order)
 
 
+
+def get_indices(l, val):
+    """ get the indices of a value in l"""
+    return set([i for i, vi in enumerate(l) if vi == val])
+
+def uniq_list (l):
+    keys = {}
+    for score, coal in l:
+        keys[(score,tuple(coal))] = 1
+    entries = keys.keys()
+    return map (lambda e: (e[0], set(e[1])), entries )
 
 ################## extended version
 
@@ -68,12 +79,19 @@ def adv_lex_cell (individuals, coalitions, scores, eps=0):
     """
         A coalition influence ONLY the performance of the items that have been taken
     """
-    grouped_coals = list(reversed(my_groupby (zip (scores, coalitions), eps) ))
-    grouped_coals = map (itemgetter(1), grouped_coals)
+    new_coalitions = map (lambda ci: get_indices(ci[0],1), coalitions)
+    scorelist = uniq_list(zip (scores, new_coalitions))
 
-    lex_scores = map (lambda ei, gcoals: compute_eq_classes(ei, gcoals), individuals, itertools.tee(grouped_coals, len(individuals)))
-    lex_scores = sorted (zip(lex_scores, individuals), reverse=True)
-    lex_order = map (itemgetter(1), lex_scores)
+    nscores, ncoals = unzip(scorelist)
+    lex_order = lex_cell (individuals, ncoals, nscores, eps)
+
+
+    #grouped_coals = list(reversed(my_groupby (scorelist, eps) ))
+    #grouped_coals = map (itemgetter(1), grouped_coals)
+
+    #lex_scores = map (lambda ei, gcoals: compute_eq_classes(ei, gcoals), individuals, itertools.tee(grouped_coals, len(individuals)))
+    #lex_scores = sorted (zip(lex_scores, individuals), reverse=True)
+    #lex_order = map (itemgetter(1), lex_scores)
     return list(lex_order)
 
 def linear_adv_lex_cell (individuals, coalitions, scores, nclasses):
@@ -81,12 +99,19 @@ def linear_adv_lex_cell (individuals, coalitions, scores, nclasses):
         A coalition influence ONLY the performance of the items that have been taken
         with linear scales
     """
-    grouped_coals = list(reversed(linear_scale_groupby (zip (scores, coalitions), nclasses) ))
-    grouped_coals = map (itemgetter(1), grouped_coals)
 
-    lex_scores = map (lambda ei, gcoals: compute_eq_classes(ei, gcoals), individuals, itertools.tee(grouped_coals, len(individuals)))
-    lex_scores = sorted (zip(lex_scores, individuals), reverse=True)
-    lex_order = map (itemgetter(1), lex_scores)
+    new_coalitions = map (lambda ci: get_indices(ci[0],1), coalitions)
+    scorelist = uniq_list(zip (scores, new_coalitions))
+
+    nscores, ncoals = unzip(scorelist)
+    lex_order = linear_lex_cell(individuals, ncoals, nscores, nclasses)
+
+    #grouped_coals = list(reversed(linear_scale_groupby (scorelist, nclasses) ))
+    #grouped_coals = map (itemgetter(1), grouped_coals)
+
+    #lex_scores = map (lambda ei, gcoals: compute_eq_classes(ei, gcoals), individuals, itertools.tee(grouped_coals, len(individuals)))
+    #lex_scores = sorted (zip(lex_scores, individuals), reverse=True)
+    #lex_order = map (itemgetter(1), lex_scores)
     return list(lex_order)
 
   

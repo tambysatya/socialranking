@@ -2,6 +2,9 @@
 import numpy as np
 from operator import itemgetter
 
+
+def unzip (l):
+    return list(zip(*l))
 def my_groupby(scorelist, eps):
     l = sorted(scorelist)
 
@@ -67,6 +70,7 @@ def group_by_chunks(l,n):
     
 def linear_scale_groupby (scorelist, nclasses):
     l = sorted (scorelist)
+    #return group_by_chunks(l, nclasses)
     return group_by_chunks(l,int(len(l)/nclasses))
 
 

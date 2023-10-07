@@ -1,11 +1,12 @@
 
-from MIP.kp import generateUniformKPND, generateWeaklyCorrelatedKPND, generateStronglyCorrelatedKPND, kp_greedy
+from MIP.kp import generateUniformKPND, generateWeaklyCorrelatedKPND, generateStronglyCorrelatedKPND, kp_greedy, test_kps
 from MIP.kp import rndGenerateUniformKPND, rndGenerateCorrelatedKPNDbiased
 
 from MIP.IS import generateIS, IndependentSet
-from MIP.problem import random_coalitions, Problem
+from MIP.problem import random_coalitions, Problem, random_coalitions_distrib
 from lexcell import lex_cell, adv_lex_cell, adv_lex_cell, linear_adv_lex_cell, linear_lex_cell
 from operator import itemgetter
+from utils import *
 import itertools
 import random
 import numpy as np
@@ -185,6 +186,7 @@ def adv_test_IS(n_individuals, maxweight, density, l, ncoal, eps, nclasses):
     pb = ins.toProblem()
 
     coals = random_coalitions(individuals, l,ncoal)
+
     print ("nb_coals=", len(coals))
 
     scores,sols = zip(*(list (map (pb.solve_coalition, coals))))
@@ -205,10 +207,16 @@ def adv_test_IS(n_individuals, maxweight, density, l, ncoal, eps, nclasses):
 
     max_score = torch.tensor(max(scores))
 
+    biased_coals = random_coalitions_distrib(list(individuals), l,ncoal, list(map (ins.efficiency, individuals))) # sampling  pas uniforme
+    biased_scores, biased_sols = unzip (list (map (pb.solve_coalition, biased_coals)))
 
-    print (f"opt={opt} geometric={adv_lex} ntiles={adv_lin_lex} standard_lin={lin_lex} heuristic={real} max={max_score}")
+    biased_order = linear_adv_lex_cell (individuals, list (zip (biased_sols, biased_coals)), biased_scores, nclasses)
+    biased_lin = ins.greedy(biased_order)
 
-    return opt, adv_lex, adv_lin_lex, lin_lex, real, max_score
+
+    print (f"opt={opt} geometric={adv_lex} ntiles={adv_lin_lex} standard_lin={lin_lex} biased_lin={biased_lin} heuristic={real} max={max_score}")
+
+    return opt, adv_lex, adv_lin_lex, lin_lex, biased_lin, real, max_score
 
 
 
@@ -271,14 +279,15 @@ def test_kp(n_individuals):
 def test_IS (n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
     print (f"n={n_individuals} weights={maxweight} density={density} depth={l} ncoal={ncoal} eps={eps} nclasses={nclasses} ntests={ntests}")
 
-    opttab, advtab, advlintab, lintab, realtab, maxtab = [],[],[],[],[],[]
+    opttab, advtab, advlintab,biasedlintab, lintab, realtab, maxtab = [],[],[],[],[],[],[]
     max_coals = []
     for i in range (ntests):
-        opt, adv_lex, adv_lin, lin_lex, real, max_coal = adv_test_IS(n_individuals, maxweight, density, l, ncoal, eps, nclasses)
+        opt, adv_lex, adv_lin, lin_lex, biased_lin, real, max_coal = adv_test_IS(n_individuals, maxweight, density, l, ncoal, eps, nclasses)
         opttab.append(opt)
         advtab.append((adv_lex/opt)*100)
         advlintab.append((adv_lin/opt)*100)
         lintab.append((lin_lex/opt)*100)
+        biasedlintab.append((biased_lin/opt)*100)
         realtab.append((real/opt)*100)
         max_coals.append((max_coal/opt)*100)
 
@@ -286,12 +295,13 @@ def test_IS (n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=
     advtab=np.array(advtab)
     advlintab=np.array(advlintab)
     lintab=np.array(lintab)
+    biasedlintab = np.array(biasedlintab)
     realtab = np.array(realtab)
     max_coals = np.array(max_coals)
 
 
-    print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " adv_lin=", advlintab.mean(), " lintab=",lintab.mean(), " real=", realtab.mean(), " max_coals=", max_coals.mean())
-    return advtab.mean(),advlintab.mean(), lintab.mean(), realtab.mean(), max_coals.mean()
+    print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " adv_lin=", advlintab.mean(), " lintab=",lintab.mean(), "biased_lin=", biasedlintab.mean(), " real=", realtab.mean(), " max_coals=", max_coals.mean())
+    return advtab.mean(),advlintab.mean(), lintab.mean(), biasedlintab.mean(),realtab.mean(), max_coals.mean()
 
 
 
@@ -318,6 +328,7 @@ def test_density_score(n, l, nd, eps, ntests=10):
 
 def plot_test(n,ls,ncoals,nd, eps, ntests, test_fun):
     #points = []
+    a
     file = open("figures/logs.txt","a")
     for l in ls:
         points_l = []
@@ -346,9 +357,9 @@ if __name__ == '__main__':
     #plot_test(50,[15,25], [100,200],10, 0.1, 10,test_opt_score)
     #opt= 15754.57999999999  advtab= 87.81137 lintab= 93.29765  lex= 81.412254  scaled= 91.894394  real= 76.46579  max_coals= 75.35057 
 
-    #test_opt_score(100,25, 1000,20, 0.1,100, ntests=10) # individuals, depth, ncoals, nb ctrs, eps, nclasses
+    #test_kps(100,10, 1000,20, 0.1,20, ntests=10) # individuals, depth, ncoals, nb ctrs, eps, nclasses
 
-    test_IS (100, 50, 0.5, 3, 10000, 0.1, 100, ntests=10) #(n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
+    test_IS (100, 50, 0.2, 3, 10000, 0.1, 20, ntests=10) #(n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
 
     #pour test range=10 : opt= 109.98199999999997  advtab= 91.738106 lintab= 94.199486  lex= 83.62069  scaled= 87.16414  real= 66.62311  max_coals= 85.7066 
     #test_opt_score(100,25, 1000,20, 0.1,10, ntests=1000) # individuals, depth, ncoals, nb ctrs, eps, nclasses
