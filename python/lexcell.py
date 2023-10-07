@@ -36,7 +36,7 @@ def lex_cell (individuals, coalitions, scores, eps=0):
     
     return list(lex_order)
 def linear_lex_cell (individuals, coalitions, scores, nclasses):
-    scorelist = zip (scores, coalitions)
+    scorelist = set(zip (scores, coalitions))
     grouped_coals = list(reversed(linear_scale_groupby(scorelist, nclasses) ))
 
 

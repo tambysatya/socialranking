@@ -4,7 +4,7 @@ from MIP.kp import rndGenerateUniformKPND, rndGenerateCorrelatedKPNDbiased
 
 from MIP.IS import generateIS, IndependentSet
 from MIP.problem import random_coalitions, Problem
-from lexcell import lex_cell, adv_lex_cell, adv_lex_cell, linear_adv_lex_cell
+from lexcell import lex_cell, adv_lex_cell, adv_lex_cell, linear_adv_lex_cell, linear_lex_cell
 from operator import itemgetter
 import itertools
 import random
@@ -193,8 +193,11 @@ def adv_test_IS(n_individuals, maxweight, density, l, ncoal, eps, nclasses):
     opt = pb.solve()[0]
     adv_lex = ins.greedy(order)
 
-    lin_order = linear_adv_lex_cell(individuals,list (zip (sols,coals)), scores, nclasses)
-    lin_lex=ins.greedy(lin_order)
+    adv_lin_order = linear_adv_lex_cell(individuals,list (zip (sols,coals)), scores, nclasses)
+    adv_lin_lex=ins.greedy(adv_lin_order)
+
+    lin_order = linear_lex_cell(individuals, coals, scores, nclasses)
+    lin_lex = ins.greedy(lin_order)
 
 
 
@@ -203,9 +206,9 @@ def adv_test_IS(n_individuals, maxweight, density, l, ncoal, eps, nclasses):
     max_score = torch.tensor(max(scores))
 
 
-    print (f"opt={opt} geometric={adv_lex} ntiles={lin_lex} heuristic={real} max={max_score}")
+    print (f"opt={opt} geometric={adv_lex} ntiles={adv_lin_lex} standard_lin={lin_lex} heuristic={real} max={max_score}")
 
-    return opt, adv_lex, lin_lex, real, max_score
+    return opt, adv_lex, adv_lin_lex, lin_lex, real, max_score
 
 
 
@@ -268,25 +271,27 @@ def test_kp(n_individuals):
 def test_IS (n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
     print (f"n={n_individuals} weights={maxweight} density={density} depth={l} ncoal={ncoal} eps={eps} nclasses={nclasses} ntests={ntests}")
 
-    opttab, advtab, lintab, realtab, maxtab = [],[],[],[],[]
+    opttab, advtab, advlintab, lintab, realtab, maxtab = [],[],[],[],[],[]
     max_coals = []
     for i in range (ntests):
-        opt, adv_lex, lin_lex, real, max_coal = adv_test_IS(n_individuals, maxweight, density, l, ncoal, eps, nclasses)
+        opt, adv_lex, adv_lin, lin_lex, real, max_coal = adv_test_IS(n_individuals, maxweight, density, l, ncoal, eps, nclasses)
         opttab.append(opt)
         advtab.append((adv_lex/opt)*100)
+        advlintab.append((adv_lin/opt)*100)
         lintab.append((lin_lex/opt)*100)
         realtab.append((real/opt)*100)
         max_coals.append((max_coal/opt)*100)
 
     opttab=np.array(opttab)
     advtab=np.array(advtab)
+    advlintab=np.array(advlintab)
     lintab=np.array(lintab)
     realtab = np.array(realtab)
     max_coals = np.array(max_coals)
 
 
-    print ("opt=",opttab.mean(), " advtab=", advtab.mean(), "lintab=",lintab.mean(), " real=", realtab.mean(), " max_coals=", max_coals.mean())
-    return advtab.mean(), lintab.mean(), realtab.mean(), max_coals.mean()
+    print ("opt=",opttab.mean(), " advtab=", advtab.mean(), " adv_lin=", advlintab.mean(), " lintab=",lintab.mean(), " real=", realtab.mean(), " max_coals=", max_coals.mean())
+    return advtab.mean(),advlintab.mean(), lintab.mean(), realtab.mean(), max_coals.mean()
 
 
 
@@ -343,7 +348,7 @@ if __name__ == '__main__':
 
     #test_opt_score(100,25, 1000,20, 0.1,100, ntests=10) # individuals, depth, ncoals, nb ctrs, eps, nclasses
 
-    test_IS (100, 50, 0.7, 5, 1000, 0.1, 100, ntests=100) #(n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
+    test_IS (100, 50, 0.5, 3, 10000, 0.1, 100, ntests=10) #(n_individuals, maxweight, density, l, ncoal, eps, nclasses, ntests=10):
 
     #pour test range=10 : opt= 109.98199999999997  advtab= 91.738106 lintab= 94.199486  lex= 83.62069  scaled= 87.16414  real= 66.62311  max_coals= 85.7066 
     #test_opt_score(100,25, 1000,20, 0.1,10, ntests=1000) # individuals, depth, ncoals, nb ctrs, eps, nclasses
