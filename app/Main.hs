@@ -2,7 +2,8 @@ module Main where
 
 import Lexcel
 import qualified Data.List as L
-import MIP.KP
+import MIP.KP as KP
+import MIP.IS as IS
 import IPSolver
 import qualified Data.Set as S
 
@@ -18,9 +19,17 @@ individuals :: (Eq a) => [[Coalition a]] -> [a]
 individuals groupedcoals = L.nub $ [individual | groups <- groupedcoals, coal <- groups, individual <- coal]
 
 main = do
+    is <- generateIS 50 100 0.2
+    env <- newIloEnv
+    pb <- buildIS env is
+    ret <- IS.solveCoalition (is,pb) $ S.fromList [1..50]
+    print ret
+    print $ IS.heuristic is
+    pure ()
+main' = do
     kp <- generateUniformFeasibleKP 100 50 100
     env <- newIloEnv
     pb <- buildKP env kp
-    ret <- solveCoalition (kp, pb) $ S.fromList [1..100]
+    ret <- KP.solveCoalition (kp, pb) $ S.fromList [1..100]
     print ret
-    print $ heuristic kp
+    print $ KP.heuristic kp

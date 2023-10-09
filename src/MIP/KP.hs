@@ -9,6 +9,7 @@ import System.Random
 import qualified Data.Set as S
 import qualified Data.List as L
 import Data.Function
+import Utils
 
 
 
@@ -23,19 +24,6 @@ weights = lens _weights $ \ins w -> ins {_weights=w}
 
 capacities :: Lens' KPIns (A.Array Int Double)
 capacities = lens _capacities $ \ins cs -> ins {_capacities = cs}
-
-getRow :: A.Array (Int,Int) a -> Int -> [a]
-getRow arr i = [arr A.! (i,j) | j <- [1..jmax]]
-    where (_,(_,jmax)) = A.bounds arr
-
-
-mkVector :: [a] -> A.Array Int a
-mkVector l = A.listArray (1, length l) l
-mkArrayFromRows :: [[a]] -> A.Array (Int,Int) a
-mkArrayFromRows l =  A.array ((1,1),(nconstraints,nvars)) arr
-  where nconstraints = length l
-        nvars = length $ head l
-        arr = [((i,j), val) | (i, colvals) <- zip [1..] l, (j,val) <- zip [1..] colvals]
 
 buildKP :: IloEnv -> KPIns -> IO KPCpx
 buildKP env kp = do
