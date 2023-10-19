@@ -1,6 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module MIP.KP where
 
+import MIP.Class
+
 import Control.Lens
 import IPSolver
 import qualified Data.Array as A 
@@ -60,7 +62,7 @@ generateUniformFeasibleKP nitems nctrs maxvals = do
     weightsmatrix <- forM [1..nctrs] $ \_ -> do
             sequence [randomRIO(1,maxvals) |i <- [1..nitems]]
     let ws = mkArrayFromRows weightsmatrix 
-        cmax i = randomRIO (minimum (getRow ws i), sum (getRow ws i))
+        cmax i = randomRIO (maximum (getRow ws i), sum (getRow ws i))
     
     capacities <- sequence [cmax i | i <- [1..nctrs]]
     pure $ KPIns (fromIntegral <$> mkVector prs) (fromIntegral <$> ws) (fromIntegral <$> mkVector capacities)
@@ -73,7 +75,7 @@ solveCoalition (ins, pb) coal = do
         forM todelete $ \i -> 
             setLinearCoef (_kpObj pb) (_kpVars  pb A.! i) 0
 
-        solve (_kpCpx pb)
+        IPSolver.solve (_kpCpx pb)
         opt <- getObjValue (_kpCpx pb)
         sol <- sequence $ fmap (_kpCpx pb `getValue`) (_kpVars pb)
 
@@ -87,11 +89,11 @@ solveCoalition (ins, pb) coal = do
 
 
 
-greedy :: KPIns -> [Int] -> Double
-greedy ins [] = 0
-greedy ins (x:xs) 
-    | and $ fmap (>=0) newcaps = (_profits ins A.! x) + greedy takex xs
-    | otherwise = greedy ins xs
+value_ :: KPIns -> [Int] -> Double
+value_ ins [] = 0
+value_ ins (x:xs) 
+    | and $ fmap (>=0) newcaps = (_profits ins A.! x) + value_ takex xs
+    | otherwise = value_ ins xs
   where takex = ins & capacities .~ mkVector newcaps
         newcaps = [_capacities ins A.! i - _weights ins A.! (i,x) | i <- [1..nctrs] ]
         (_,nctrs) = A.bounds $ _capacities ins
@@ -99,10 +101,21 @@ greedy ins (x:xs)
 
 
 heuristic :: KPIns -> Double
-heuristic kp = greedy kp $ reverse $ L.sortBy (compare `on` efficiency) [1..nvars]
+heuristic kp = value_ kp $ reverse $ L.sortBy (compare `on` efficiency) [1..nvars]
     where efficiency x = prs A.! x / sum [ws A.! (i,x) | i <- [1..nctrs]]
           (prs, ws) = (_profits kp, _weights kp)
           (_,(nctrs,nvars)) = A.bounds ws
 
+
+instance Problem KPIns where
+    individuals kp  = [n0..n1]
+        where (n0,n1) = A.bounds $ _profits kp
+    value = value_
+    greedy = heuristic
+    solve env kp = do
+        pb <- buildKP env kp
+        let cpx = _kpCpx pb
+        IPSolver.solve cpx
+        getObjValue cpx
 
 

@@ -1,4 +1,5 @@
 module MIP.IS where
+import MIP.Class
 
 import IPSolver
 import qualified Data.Array as A
@@ -59,7 +60,7 @@ solveCoalition :: (ISIns, ISCpx) -> S.Set Int -> IO (Int, [Int])
 solveCoalition (ins, pb) coal = do
     forM_ todelete $ \i ->
         setLinearCoef obj (vars A.! i) 0
-    solve (_isCpx pb)    
+    IPSolver.solve (_isCpx pb)    
     opt <- getObjValue (_isCpx pb)
     sol <- sequence $ fmap (_isCpx pb `getValue`) vars
 
@@ -76,14 +77,14 @@ solveCoalition (ins, pb) coal = do
 
 
 
-greedy :: ISIns -> [Int] -> Double
-greedy ins order = greedy' (_weights ins) (S.fromList $ _adjlist ins) order $ S.fromList order
-greedy' :: A.Array Int Int -> S.Set (Int,Int) -> [Int] -> S.Set Int -> Double
-greedy' _ _ [] _ = 0
-greedy' weights adjlist (x:xs) candidates
+value_ :: ISIns -> [Int] -> Double
+value_ ins order = value' (_weights ins) (S.fromList $ _adjlist ins) order $ S.fromList order
+value' :: A.Array Int Int -> S.Set (Int,Int) -> [Int] -> S.Set Int -> Double
+value' _ _ [] _ = 0
+value' weights adjlist (x:xs) candidates
     | S.empty == candidates = 0
-    | not $ x `S.member` candidates = greedy' weights adjlist xs candidates
-    | otherwise = fromIntegral (weights A.! x) + greedy' weights adjlist' xs candidates'
+    | not $ x `S.member` candidates = value' weights adjlist xs candidates
+    | otherwise = fromIntegral (weights A.! x) + value' weights adjlist' xs candidates'
   where adjedges = adjacents x $ S.toList adjlist -- adjacent edges
         neighbors = S.fromList $ L.nub $ map fst adjedges ++ map snd adjedges
         adjlist' = adjlist S.\\ S.fromList adjedges
@@ -110,3 +111,12 @@ heuristic' neighbors degrees weights candidates
           degrees' = foldr removeNeigh degrees (neighbors A.! best)
 
 
+instance Problem ISIns where
+    individuals is = [n0..n1]
+        where (n0,n1) = A.bounds $ _weights is
+    value = value_
+    greedy = fromIntegral.heuristic
+    solve env is  = do 
+        pb <- buildIS env is
+        IPSolver.solve $ _isCpx pb
+        getObjValue $ _isCpx pb
