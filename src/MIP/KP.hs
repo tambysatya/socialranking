@@ -9,6 +9,7 @@ import qualified Data.Array as A
 import Control.Monad
 import System.Random
 import qualified Data.Set as S
+import qualified Data.IntSet as I
 import qualified Data.List as L
 import Data.Function
 import Utils
@@ -16,7 +17,7 @@ import Utils
 
 
 data KPIns = KPIns {_profits :: A.Array Int Double, _weights :: A.Array (Int,Int) Double, _capacities :: A.Array Int Double}
-data KPCpx = KPCpx {_kpMdl :: IloModel, _kpCpx :: IloCplex, _kpObj :: IloObjective, _kpCtrs :: A.Array Int IloRange, _kpVars :: A.Array Int IloBoolVar}
+data KPCpx = KPCpx {_kpMdl :: !IloModel, _kpCpx :: !IloCplex, _kpObj :: IloObjective, _kpCtrs :: A.Array Int IloRange, _kpVars :: A.Array Int IloBoolVar}
 
 profits :: Lens' KPIns (A.Array Int Double)
 profits = lens _profits $ \ins pr -> ins{_profits=pr}
@@ -70,7 +71,7 @@ generateUniformFeasibleKP nitems nctrs maxvals = do
     
 
 
-solveCoalition :: (KPIns, KPCpx) -> S.Set Int -> IO (Int , [Int])
+solveCoalition :: (KPIns, KPCpx) -> I.IntSet -> IO (Double, I.IntSet)
 solveCoalition (ins, pb) coal = do
         forM todelete $ \i -> 
             setLinearCoef (_kpObj pb) (_kpVars  pb A.! i) 0
@@ -82,29 +83,36 @@ solveCoalition (ins, pb) coal = do
         forM todelete $ \i ->
             setLinearCoef (_kpObj pb) (_kpVars pb A.! i) $ _profits ins A.! i
 
-        pure (round opt, [i | (i,si) <- zip [1..] $ A.elems sol, si == 1, i `S.member` coal])
+        pure (fromIntegral $ round opt, I.fromList [i | (i,si) <- zip [1..] $ A.elems sol, si == 1, i `I.member` coal])
     where (_,nitems) = A.bounds (_kpVars pb)
-          todelete = S.toList $ S.fromList [1..nitems] S.\\ coal
+          todelete = I.toList $ I.fromList [1..nitems] I.\\ coal
 
 
 
 
-value_ :: KPIns -> [Int] -> Double
-value_ ins [] = 0
+value_ :: KPIns -> [Int] -> (Double, I.IntSet)
+value_ ins [] = (0, I.empty)
 value_ ins (x:xs) 
-    | and $ fmap (>=0) newcaps = (_profits ins A.! x) + value_ takex xs
+    | and $ fmap (>=0) newcaps = let (opt, sol) = value_ takex xs in (xval+opt, I.insert x sol) -- (_profits ins A.! x) + value_ takex xs
     | otherwise = value_ ins xs
   where takex = ins & capacities .~ mkVector newcaps
         newcaps = [_capacities ins A.! i - _weights ins A.! (i,x) | i <- [1..nctrs] ]
         (_,nctrs) = A.bounds $ _capacities ins
+        xval = _profits ins A.! x
 
 
 
 heuristic :: KPIns -> Double
-heuristic kp = value_ kp $ reverse $ L.sortBy (compare `on` efficiency) [1..nvars]
+heuristic kp = fst $ value_ kp $ reverse $ L.sortBy (compare `on` efficiency) [1..nvars]
     where efficiency x = prs A.! x / sum [ws A.! (i,x) | i <- [1..nctrs]]
           (prs, ws) = (_profits kp, _weights kp)
           (_,(nctrs,nvars)) = A.bounds ws
+
+item_efficiency :: KPIns -> Int -> Double
+item_efficiency kp x = prs A.! x / sum [ws A.! (i,x) | i <- [1..nctrs]]
+    where (prs, ws) = (_profits kp, _weights kp)
+          (_,(nctrs,nvars)) = A.bounds ws
+
 
 
 instance Problem KPIns where
@@ -117,5 +125,6 @@ instance Problem KPIns where
         let cpx = _kpCpx pb
         IPSolver.solve cpx
         getObjValue cpx
+    efficiency = item_efficiency
 
 

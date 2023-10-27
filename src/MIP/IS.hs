@@ -4,6 +4,7 @@ import MIP.Class
 import IPSolver
 import qualified Data.Array as A
 import qualified Data.Set as S
+import qualified Data.IntSet as I
 import qualified Data.List as L
 import Utils
 import Control.Monad
@@ -11,7 +12,7 @@ import System.Random
 import Control.Lens
 import Data.Function
 
-data ISIns = ISIns { _adjlist :: [(Int,Int)], _weights :: A.Array Int Int}
+data ISIns = ISIns { _adjlist :: [(Int,Int)], _weights :: A.Array Int Int, _degrees :: A.Array Int Int}
 data ISCpx = ISCpx {_isMdl :: IloModel, _isCpx :: IloCplex, _isObj :: IloObjective, _isCtrs :: A.Array Int IloRange, _isVars :: A.Array Int IloBoolVar}
 
 
@@ -53,10 +54,10 @@ generateIS nvertices maxval density = do
                 r <- randomRIO (0,1)
                 if r <= density then pure ((i,j),True) else pure ((i,j),False)
     let adjlist = [e | (e, b) <- concat edges, b == True]                
-    pure $ ISIns adjlist $ mkVector ws
+    pure $ ISIns adjlist (mkVector ws) (computeDegrees nvertices adjlist)
 
 
-solveCoalition :: (ISIns, ISCpx) -> S.Set Int -> IO (Int, [Int])
+solveCoalition :: (ISIns, ISCpx) -> S.Set Int -> IO (Double, I.IntSet)
 solveCoalition (ins, pb) coal = do
     forM_ todelete $ \i ->
         setLinearCoef obj (vars A.! i) 0
@@ -67,7 +68,7 @@ solveCoalition (ins, pb) coal = do
     forM_ todelete $ \i ->
         setLinearCoef obj (vars A.! i) (fromIntegral $ weights A.! i)
 
-    pure (round opt, [i | (i,si) <- zip [1..] $ A.elems sol, si == 1, i `S.member` coal])
+    pure (fromIntegral $ round opt, I.fromList [i | (i,si) <- zip [1..] $ A.elems sol, si == 1, i `S.member` coal])
     
  where  nvars = length (_weights ins)
         todelete = S.toList $ S.fromList [1..nvars] S.\\ coal
@@ -77,19 +78,25 @@ solveCoalition (ins, pb) coal = do
 
 
 
-value_ :: ISIns -> [Int] -> Double
+value_ :: ISIns -> [Int] -> (Double, I.IntSet)
 value_ ins order = value' (_weights ins) (S.fromList $ _adjlist ins) order $ S.fromList order
-value' :: A.Array Int Int -> S.Set (Int,Int) -> [Int] -> S.Set Int -> Double
-value' _ _ [] _ = 0
+value' :: A.Array Int Int -> S.Set (Int,Int) -> [Int] -> S.Set Int -> (Double, I.IntSet)
+value' _ _ [] _ = (0, I.empty)
 value' weights adjlist (x:xs) candidates
-    | S.empty == candidates = 0
+    | S.empty == candidates = (0, I.empty)
     | not $ x `S.member` candidates = value' weights adjlist xs candidates
-    | otherwise = fromIntegral (weights A.! x) + value' weights adjlist' xs candidates'
+    | otherwise = let (opt, sol) = value' weights adjlist' xs candidates' in (xval+opt, I.insert x sol)
   where adjedges = adjacents x $ S.toList adjlist -- adjacent edges
         neighbors = S.fromList $ L.nub $ map fst adjedges ++ map snd adjedges
         adjlist' = adjlist S.\\ S.fromList adjedges
         candidates' = candidates S.\\ neighbors
+        xval = fromIntegral $ weights A.! x
         
+
+computeDegrees :: Int -> [(Int,Int)] -> A.Array Int Int
+computeDegrees nvertices adjlist = fmap length neighbors
+    where neighbors = foldr (\(xi,xj) acc -> acc & ix xi %~ (xj:)
+                                                 & ix xj %~ (xi:)) (mkVector [[] | _ <- [1..nvertices]]) adjlist
 
 
 heuristic ins = heuristic' neighbors degrees (_weights ins) candidates
@@ -110,6 +117,10 @@ heuristic' neighbors degrees weights candidates
 
           degrees' = foldr removeNeigh degrees (neighbors A.! best)
 
+item_efficiency :: ISIns -> Int -> Double
+item_efficiency is i = (fromIntegral $ weights A.! i) / (1e-9 + fromIntegral (degrees A.! i))
+    where weights = _weights is
+          degrees = _degrees is
 
 instance Problem ISIns where
     individuals is = [n0..n1]
@@ -120,3 +131,4 @@ instance Problem ISIns where
         pb <- buildIS env is
         IPSolver.solve $ _isCpx pb
         getObjValue $ _isCpx pb
+    efficiency = item_efficiency
